@@ -36,7 +36,18 @@ namespace IVLab.ABREngine
     /// </summary>
     [CreateAssetMenu(fileName = "ABRConfig", menuName = "ABR/ABR Configuration")]
     public class ABRConfig : ScriptableObject
-    {
+    { 
+        /// Read config stuff in from a JSON file
+
+        [System.Serializable]
+        public class ExternalConfiguration
+        {
+            public string mediaDirectory;
+            public string serverURL;     
+
+            public bool useAutoDataContainer;   
+        };
+
         [Header("Common Configuration Options (hover for more info)")]
 
         /// <summary>
@@ -251,8 +262,34 @@ namespace IVLab.ABREngine
                 Debug.Log("Saved backup schema to " + schemaBakPath);
             }
 
-
             Debug.LogFormat("Using ABR Schema, version {0}", SchemaJson["properties"]["version"]["default"]);
+
+            string envDir = Environment.GetEnvironmentVariable("ABRConfig");
+            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+            if (envDir == null)
+                envDir = home;
+        
+            string cfgFile = Path.Combine(envDir, "abr.json");
+
+            try
+            {
+                StreamReader reader = new StreamReader(cfgFile);
+                string json = reader.ReadToEnd();            
+                Debug.Log(json);
+                ExternalConfiguration cfg = new ExternalConfiguration();
+                cfg = JsonUtility.FromJson<ExternalConfiguration>(json);
+                Debug.Log("Using external configuration file: " + cfgFile);
+
+                serverUrl = cfg.serverURL;
+                mediaPath = cfg.mediaDirectory;
+                useAutoDataContainer = cfg.useAutoDataContainer;
+            }
+            catch(Exception e)
+            {
+                Debug.Log("No external config file");
+            }
+
         }
 
         public override string ToString()

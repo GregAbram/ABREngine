@@ -37,15 +37,25 @@ namespace IVLab.ABREngine
     [CreateAssetMenu(fileName = "ABRConfig", menuName = "ABR/ABR Configuration")]
     public class ABRConfig : ScriptableObject
     { 
-        /// Read config stuff in from a JSON file
+        /// Read config stuff in from a JSON file <summary>
+             
+             
+        [System.Serializable]
+        public class jvector
+        {
+            public float x;
+            public float y;
+            public float z;
+        };
 
         [System.Serializable]
         public class ExternalConfiguration
         {
             public string mediaDirectory;
             public string serverURL;     
-
             public bool useAutoDataContainer;   
+            public jvector center;
+            public jvector extents;
         };
 
         [Header("Common Configuration Options (hover for more info)")]
@@ -284,6 +294,9 @@ namespace IVLab.ABREngine
                 serverUrl = cfg.serverURL;
                 mediaPath = cfg.mediaDirectory;
                 useAutoDataContainer = cfg.useAutoDataContainer;
+
+                dataContainer.center = new Vector3(cfg.center.x, cfg.center.y, cfg.center.z);              
+                dataContainer.extents = new Vector3(cfg.extents.x, cfg.extents.y, cfg.extents.z);
             }
             catch(Exception e)
             {

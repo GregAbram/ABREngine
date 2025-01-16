@@ -18,6 +18,7 @@
  */
 
 #if UNITY_EDITOR
+#if false
 
 using System;
 using System.Linq;
@@ -193,4 +194,5 @@ namespace IVLab.ABREngine
         }
     }
 }
+#endif
 #endif

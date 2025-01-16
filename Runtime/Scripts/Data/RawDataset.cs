@@ -23,6 +23,13 @@ using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Net;
+using System.Net.Sockets;
+using IVLab.Utilities;
+using UnityEngine.AI;
+using UnityEditor;
 
 namespace IVLab.ABREngine
 {
@@ -110,7 +117,6 @@ namespace IVLab.ABREngine
         [SerializeField]
         public string[] scalarArrayNames;
 
-
         [SerializeField]
         public float[] scalarMins;
 
@@ -132,8 +138,9 @@ namespace IVLab.ABREngine
         [SerializeField]
         public Vector3Int dimensions;
 
-        [SerializeField]
-        public DataTopology dataTopology = DataTopology.Points;
+        int currentIndex = -1;
+
+        public bool isRemote;
 
         /// <summary>
         /// Header that contains metadata for a particular RawDataset
@@ -150,7 +157,15 @@ namespace IVLab.ABREngine
             public int[] dimensions;
             public float[] scalarMaxes;
             public float[] scalarMins;
+            public float[] timesteps;
+            public string[] timestepFiles;
+            public bool isTimeVarying;
+            public float minTime;
+            public float maxTime;
+
         }
+
+        public JsonHeader info;
 
         /// <summary>
         /// Actual geometric representation of the data to load from a file / socket
@@ -161,6 +176,9 @@ namespace IVLab.ABREngine
             public int[] index_array { get; set; }
             public float[][] scalar_arrays { get; set; }
             public float[][] vector_arrays { get; set; }
+
+            Vector3 translation;
+            float scale;
 
             public void Decode(JsonHeader bdh, byte[] bytes)
             {
@@ -174,6 +192,19 @@ namespace IVLab.ABREngine
                     nbytes = 3 * bdh.num_points * sizeof(float);
                     Buffer.BlockCopy(bytes, offset, vertices, 0, nbytes);
                     offset = offset + nbytes;
+                }
+                                
+                Vector3 center = ABREngine.Instance.Config.center;
+                float scale = (float)ABREngine.Instance.Config.scale;
+
+                for (int i = 0; i < 3*bdh.num_points; )
+                {
+                    vertices[i] = (vertices[i] - center.x) * scale;
+                    i++;
+                    vertices[i] = (vertices[i] - center.y) * scale;
+                    i++;
+                    vertices[i] = (vertices[i] - center.z) * scale;
+                    i++;
                 }
 
                 index_array = new int[bdh.num_cell_indices];
@@ -192,11 +223,21 @@ namespace IVLab.ABREngine
 
                 vector_arrays = new float[bdh.vectorArrayNames.Length][];
                 nbytes = 3 * bdh.num_points * sizeof(float);
-                for (int i = 0; i < bdh.vectorArrayNames.Length; i++)
+                for (int j = 0; j < bdh.vectorArrayNames.Length; j++)
                 {
-                    vector_arrays[i] = new float[3 * bdh.num_points];
-                    Buffer.BlockCopy(bytes, offset, vector_arrays[i], 0, nbytes);
+                    vector_arrays[j] = new float[3 * bdh.num_points];
+                    Buffer.BlockCopy(bytes, offset, vector_arrays[j], 0, nbytes);
                     offset = offset + nbytes;
+
+                    for (int i = 0; i < 3*bdh.num_points; )
+                    {
+                        vector_arrays[j][i] = ((vector_arrays[j][i] - translation.x) * scale) + center.x;
+                        i++;
+                        vector_arrays[j][i] = ((vector_arrays[j][i] - translation.y) * scale) + center.y;
+                        i++;
+                        vector_arrays[j][i] = ((vector_arrays[j][i] - translation.z) * scale) + center.z;
+                        i++;
+                    }
                 }
             }
 
@@ -248,8 +289,6 @@ namespace IVLab.ABREngine
                         unstructuredIndices[ui++] = indices[indexOffset + indexInCell];
                     }
                 }
-                // Debug.Log("unstruct " + string.Join(", ", unstructuredIndices));
-
 
                 int offset = 0;
 
@@ -294,8 +333,7 @@ namespace IVLab.ABREngine
                 return outBytes;
             }
 
-            public BinaryData(JsonHeader bdh, string file)
-            {
+            public BinaryData(JsonHeader bdh, string file) {
                 byte[] bytes = File.ReadAllBytes(file);
                 Decode(bdh, bytes);
             }
@@ -306,21 +344,194 @@ namespace IVLab.ABREngine
             }
         }
 
+        // This one is used when we are loading a dataset from the file system.
+        // The path is relative to the media data folder.
+        public static JsonHeader LoadHeaderLocal(string name)
+        {
+            string dataDir = Path.Combine(ABREngine.Instance.Config.mediaPath, ABRConfig.Consts.DatasetFolder);
+
+            string[] parts = name.Split('/');
+
+            for (int i = 0; i < parts.Length - 1; i++)
+                dataDir = Path.Combine(dataDir, parts[i]);
+
+            string dataName = parts[parts.Length - 1];
+            string jsonPath = Path.Combine(dataDir, dataName) + ".json";
+            
+            if (! File.Exists(jsonPath))
+                return null;
+            
+            JsonHeader hdr = LoadHeaderString(File.ReadAllText(jsonPath));
+
+            string[] binFiles = Directory.GetFiles(dataDir, dataName + "-*.tstep");                
+            if (binFiles.Length > 0)
+            {
+                //binFiles = Directory.GetFiles(dataDir, dataName + "-*.tstep");                
+                List<Tuple<double, string>> tupleList = new List<Tuple<double, string>>();
+
+                for (int i = 0; i < binFiles.Length; i++)
+                {
+                    string binFile = binFiles[i];
+                    parts = binFile.Split('/');
+                    string[] s0 = parts[parts.Length - 1].Split('.');
+                    string[] s1 = s0[0].Split('-');
+
+                    if (s1.Length > 1)
+                    {
+                        string timestring = s1[s1.Length - 1];  
+                        var c = Regex.Matches(timestring, @"\d?[\.\d?]*");
+
+                        if (c.Count > 0)
+                        {
+                            double t = Convert.ToDouble(timestring);
+                            tupleList.Add(Tuple.Create(t, binFile));
+                        }
+                    }
+                }
+
+                List<Tuple<double, string>> sortedList = tupleList.OrderBy(o=>o.Item1).ToList();
+
+                hdr.timestepFiles = new string[sortedList.Count];
+                hdr.timesteps = new float[sortedList.Count];
+
+                for (int i = 0; i < sortedList.Count; i++)
+                {
+                    hdr.timesteps[i] = (float)sortedList[i].Item1;
+                    hdr.timestepFiles[i] = sortedList[i].Item2;
+                }
+
+
+                hdr.isTimeVarying = true;
+                hdr.minTime = hdr.timesteps[0];
+                hdr.maxTime = hdr.timesteps[hdr.timesteps.Length - 1];
+            }
+            else
+            {   
+                hdr.timestepFiles = new string[1];
+                hdr.timesteps = new float[1];
+                hdr.timestepFiles[0] = jsonPath;
+                hdr.timesteps[0] = 0.0f;
+                hdr.isTimeVarying = false;
+            }
+
+            return hdr; 
+        }
+
+
+        public static JsonHeader LoadHeaderRemote(string name)
+        {
+            ABRConfig config = ABREngine.Instance.Config;
+            foreach (ABRConfig.RemoteDataSource remote in config.remotes)
+            {  
+                try
+                {
+                    MyStream ms = new MyStream(remote.host, remote.port);
+                    ms.SendString("get header:" + name);
+                    string rply = ms.ReadString();
+                    if (rply == "yes")
+                    {
+                        string json = ms.ReadString();
+                        return LoadHeaderString(json);
+                    }
+                }
+                catch(Exception e)
+                {
+                    Debug.Log(e.ToString());
+                }
+            }
+            return null;
+        }
+        public static JsonHeader LoadHeaderString(string bytes)
+        {
+            try {
+                JsonHeader hdr = JsonUtility.FromJson<RawDataset.JsonHeader>(bytes);
+            } 
+            catch (Exception e)
+            {
+                Debug.LogFormat("failed to load JSON: {0}", e.Message);
+            }
+            return JsonUtility.FromJson<RawDataset.JsonHeader>(bytes);
+        }
+           
         public RawDataset() { }
 
-        public RawDataset(JsonHeader jh, BinaryData bd)
-        {
-            dataTopology = jh.meshTopology;
 
-            // Convert the vertices. Volumes don't have vertices, they have dimensions instead (number of voxels in x y z)
-            if (dataTopology == DataTopology.Voxels)
+        public RawDataset(JsonHeader jh)
+        {
+            info = jh;
+        }
+
+        public RawDataset(JsonHeader jh, byte[] bytes)
+        {
+            info = jh;
+
+            LoadByteData(bytes);
+        } 
+
+        public bool UpdateTimestep()
+        {
+            float currentTime = ABREngine.Instance.GetCurrentTime();
+
+            int ti = 0;
+            for (ti = 0; ti < (info.timestepFiles.Length - 1); ti++)  
             {
-                dimensions = new Vector3Int(jh.dimensions[0], jh.dimensions[1], jh.dimensions[2]);
+                if (info.timesteps[ti+1] > currentTime)
+                    break;
+            }
+
+            if (ti == currentIndex)
+                return false;
+
+            currentIndex = ti;
+
+            string dataPath = info.timestepFiles[currentIndex];
+            JsonHeader hdr = null;
+            byte[] bytes = null;
+
+            if (isRemote)
+            {
+                foreach (ABRConfig.RemoteDataSource remote in ABREngine.Instance.Config.remotes)
+                {
+                    MyStream ms = new(remote.host, remote.port);
+                    ms.SendString("get data:" + dataPath);
+                    string rply = ms.ReadString();
+                    if (rply == "yes")
+                    {
+                        
+                        hdr = LoadHeaderString(ms.ReadString());
+                        bytes = ms.ReadBytes();
+                    }
+                }
             }
             else
             {
-                vertexArray = new Vector3[jh.num_points];
-                for (int i = 0; i < jh.num_points; i++)
+                string jsonFile = Path.Combine(ABREngine.Instance.Config.mediaPath, dataPath);
+                string binFile = Path.ChangeExtension(jsonFile, "bin");
+                hdr = LoadHeaderString(File.ReadAllText(jsonFile));
+                bytes = File.ReadAllBytes(binFile);
+            }
+            LoadByteData(hdr, bytes);
+            return true;
+        }
+
+        private void LoadByteData(byte[] bytes)
+        {
+            LoadByteData(info, bytes);
+        }
+
+        private void LoadByteData(JsonHeader info, byte[] bytes)
+        {
+            BinaryData bd = new BinaryData(info, bytes);
+
+            // Convert the vertices. Volumes don't have vertices, they have dimensions instead (number of voxels in x y z)
+            if (info.meshTopology == DataTopology.Voxels)
+            {
+                dimensions = new Vector3Int(info.dimensions[0], info.dimensions[1], info.dimensions[2]);
+            }
+            else
+            {
+                vertexArray = new Vector3[info.num_points];
+                for (int i = 0; i < info.num_points; i++)
                 {
                     vertexArray[i][0] = bd.vertices[i * 3 + 0];
                     vertexArray[i][1] = bd.vertices[i * 3 + 1];
@@ -335,30 +546,26 @@ namespace IVLab.ABREngine
             // {# indices in cell 0, idx0, idx1, idx2, #indices in cell 1, idx0, idx1, idx2, ...}, for example on a cube made up of triangles:
             // 3, 0, 1, 2,     3, 3, 2, 1,     3, 4, 6, 5,     3, 7, 5, 6,     3, 8, 10, 9, ....
             long numIndices = 0;
-            if (dataTopology == DataTopology.Points || dataTopology == DataTopology.Voxels)
-                numIndices = jh.num_cells;
+            if (info.meshTopology == DataTopology.Points || info.meshTopology == DataTopology.Voxels)
+                numIndices = info.num_cells;
             else
             {
                 long indx = 0;
-                for (int i = 0; i < jh.num_cells; i++)
+                for (int i = 0; i < info.num_cells; i++)
                 {
                     long k = bd.index_array[indx];
                     numIndices = numIndices + bd.index_array[indx];
                     indx = indx + k + 1;
                 }
             }
-            // Debug.Log("Loaded idx: " + string.Join(", ", bd.index_array));
-
-            // Debug.Log("num cells " + jh.num_cells);
-            // Debug.Log("num cell indices " + jh.num_cell_indices);
-
-            cellIndexOffsets = new int[jh.num_cells];
-            cellIndexCounts = new int[jh.num_cells];
+    
+            cellIndexOffsets = new int[info.num_cells];
+            cellIndexCounts = new int[info.num_cells];
             indexArray = new int[numIndices];
 
             int src_indx = 0;
             int dst_indx = 0;
-            for (long c = 0; c < jh.num_cells; c++)
+            for (long c = 0; c < info.num_cells; c++)
             {
                 cellIndexOffsets[c] = dst_indx;
                 cellIndexCounts[c] = bd.index_array[src_indx];
@@ -372,29 +579,25 @@ namespace IVLab.ABREngine
                 }
             }
 
-            // Debug.Log("out indices: " + string.Join(", ", indexArray));
-            // Debug.Log("out cellIndexOffsets: " + string.Join(", ", cellIndexOffsets));
-            // Debug.Log("out cellIndexCounts: " + string.Join(", ", cellIndexCounts));
+            bounds = info.bounds;
+            scalarArrayNames = info.scalarArrayNames;
+            vectorArrayNames = info.vectorArrayNames;
+            scalarMins = info.scalarMins;
+            scalarMaxes = info.scalarMaxes;
 
-            bounds = jh.bounds;
-            scalarArrayNames = jh.scalarArrayNames;
-            vectorArrayNames = jh.vectorArrayNames;
-            scalarMins = jh.scalarMins;
-            scalarMaxes = jh.scalarMaxes;
-
-            scalarArrays = new SerializableFloatArray[jh.scalarArrayNames.Count()];
+            scalarArrays = new SerializableFloatArray[info.scalarArrayNames.Count()];
             for (int i = 0; i < scalarArrayNames.Count(); i++)
             {
                 scalarArrays[i] = new SerializableFloatArray();
                 scalarArrays[i].array = bd.scalar_arrays[i];
             }
 
-            vectorArrays = new SerializableVectorArray[jh.vectorArrayNames.Count()];
-            for (int i = 0; i < jh.vectorArrayNames.Count(); i++)
+            vectorArrays = new SerializableVectorArray[info.vectorArrayNames.Count()];
+            for (int i = 0; i < info.vectorArrayNames.Count(); i++)
             {
                 vectorArrays[i] = new SerializableVectorArray();
-                vectorArrays[i].array = new Vector3[jh.num_points];
-                for (int j = 0; j < jh.num_points; j++)
+                vectorArrays[i].array = new Vector3[info.num_points];
+                for (int j = 0; j < info.num_points; j++)
                 {
                     vectorArrays[i].array[j][0] = bd.vector_arrays[i][j * 3 + 0];
                     vectorArrays[i].array[j][1] = bd.vector_arrays[i][j * 3 + 1];
@@ -413,7 +616,7 @@ namespace IVLab.ABREngine
         public Tuple<string, byte[]> ToFilePair()
         {
             JsonHeader jh = new JsonHeader();
-            jh.meshTopology = this.dataTopology;
+            jh.meshTopology = this.info.meshTopology;
             jh.num_points = this.vertexArray.Length;
             jh.num_cells = this.cellIndexCounts.Length;
             jh.num_cell_indices = this.cellIndexCounts.Sum() + this.cellIndexCounts.Length; // num_cell_indices actually includes the "counts" as well
@@ -444,10 +647,8 @@ namespace IVLab.ABREngine
                     }
                 }
                 return _vectorDictionary;
-
             }
         }
-
 
         public Vector3[] GetVectorArray(string name)
         {

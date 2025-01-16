@@ -49,13 +49,28 @@ namespace IVLab.ABREngine
         };
 
         [System.Serializable]
+        public class RemoteDataSource
+        {
+            public string host;
+            public int port;
+        };
+
+        public class ExternalDataContainer
+        {
+            public jvector center;
+            public jvector extent;
+        }
+
+        [System.Serializable]
         public class ExternalConfiguration
         {
             public string mediaDirectory;
             public string serverURL;     
             public bool useAutoDataContainer;   
             public jvector center;
-            public jvector extents;
+            public double scale;
+            public ExternalDataContainer container;
+            public RemoteDataSource[] remotes;
         };
 
         [Header("Common Configuration Options (hover for more info)")]
@@ -134,6 +149,11 @@ namespace IVLab.ABREngine
         /// </summary>
         [Tooltip("Use the automatic data container, or just import coordinates as-is")]
         public bool useAutoDataContainer;
+
+        public RemoteDataSource[] remotes;
+
+        public double scale;
+        public Vector3 center;
 
         /// <summary>
         ///     Default bounds for datasets when showing (in Unity world coordinates)
@@ -293,10 +313,16 @@ namespace IVLab.ABREngine
 
                 serverUrl = cfg.serverURL;
                 mediaPath = cfg.mediaDirectory;
-                useAutoDataContainer = cfg.useAutoDataContainer;
+                remotes = cfg.remotes;
+                center =  new Vector3(cfg.center.x, cfg.center.y, cfg.center.z);
+                scale = cfg.scale;
 
-                dataContainer.center = new Vector3(cfg.center.x, cfg.center.y, cfg.center.z);              
-                dataContainer.extents = new Vector3(cfg.extents.x, cfg.extents.y, cfg.extents.z);
+                useAutoDataContainer = cfg.useAutoDataContainer;
+                if (cfg.container != null)
+                {
+                    dataContainer.center = new Vector3(cfg.container.center.x, cfg.container.center.y, cfg.container.center.z);              
+                    dataContainer.extents = new Vector3(cfg.container.extent.x, cfg.container.extent.y, cfg.container.extent.z);
+                }
             }
             catch(Exception e)
             {

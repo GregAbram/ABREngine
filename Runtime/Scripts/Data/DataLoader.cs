@@ -25,6 +25,7 @@ using System.Net.Http;
 
 using Newtonsoft.Json.Linq;
 using IVLab.Utilities;
+using System.Net.Http.Headers;
 
 namespace IVLab.ABREngine
 {
@@ -44,29 +45,36 @@ namespace IVLab.ABREngine
     /// </summary>
     public class MediaDataLoader : IDataLoader
     {
-        public RawDataset LoadData(string dataPath)
+        public RawDataset LoadData(string name)
         {
-            string mediaDir = Path.GetFullPath(ABREngine.Instance.MediaPath);
-            FileInfo jsonFile = new FileInfo(Path.Combine(mediaDir, ABRConfig.Consts.DatasetFolder, dataPath) + ".json");
-            if (!jsonFile.Exists)
+            Debug.LogFormat("LoadData  {0}", name);
+            RawDataset rds = null;
+
+            RawDataset.JsonHeader hdr = RawDataset.LoadHeaderLocal(name);
+
+                
+            if (hdr == null)
+            {                
+                hdr = RawDataset.LoadHeaderRemote(name);
+                if (hdr == null)
+                {
+                    return null;
+                }
+                else
+                {
+
+                    rds = new(hdr);
+                    rds.isRemote = true;
+                }
+            }
+            else
             {
-                return null;
+                rds = new(hdr);
+                rds.isRemote = false;
             }
 
-            string metadataContent = "";
-            using (StreamReader file = new StreamReader(jsonFile.FullName))
-            {
-                metadataContent = file.ReadToEnd();
-            }
-
-            RawDataset.JsonHeader metadata = JsonUtility.FromJson<RawDataset.JsonHeader>(metadataContent);
-
-            FileInfo binFile = new FileInfo(Path.Combine(mediaDir, ABRConfig.Consts.DatasetFolder, dataPath) + ".bin");
-            byte[] dataBytes = File.ReadAllBytes(binFile.FullName);
-
-            RawDataset.BinaryData data = new RawDataset.BinaryData(metadata, dataBytes);
-
-            return new RawDataset(metadata, data);
+            rds?.UpdateTimestep();
+            return rds;
         }
     }
 
@@ -91,8 +99,7 @@ namespace IVLab.ABREngine
             metadataResponse.EnsureSuccessStatusCode();
             byte[] dataBytes = dataResponse.Content.ReadAsByteArrayAsync().Result;
 
-            RawDataset.BinaryData data = new RawDataset.BinaryData(metadata, dataBytes);
-            return new RawDataset(metadata, data);
+            return new RawDataset(metadata, dataBytes);
         }
     }
 
@@ -120,12 +127,7 @@ namespace IVLab.ABREngine
             JObject metadata = JObject.Parse(metadataJson);
             RawDataset.JsonHeader meta = metadata.ToObject<RawDataset.JsonHeader>();
 
-            byte[] dataBytes = metadataData[0].bytes.Length < metadataData[1].bytes.Length ? metadataData[1].bytes : metadataData[0].bytes;
-            RawDataset.BinaryData data = new RawDataset.BinaryData(meta, dataBytes);
-            Resources.UnloadAsset(metadataData[0]);
-            Resources.UnloadAsset(metadataData[1]);
-            
-            return new RawDataset(meta, data);
+            return new RawDataset(meta);
         }
     }
 }

@@ -191,7 +191,7 @@ namespace IVLab.ABREngine.Legends
             RawDataset vol = new RawDataset();
             vol.dimensions = new Vector3Int(20, 20, 20);
             vol.bounds = LegendBounds;
-            vol.dataTopology = DataTopology.Voxels;
+            vol.info.meshTopology = DataTopology.Voxels;
 
             int numScalars = 1;
             vol.scalarArrayNames = new string[numScalars];

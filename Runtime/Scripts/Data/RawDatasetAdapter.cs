@@ -91,7 +91,7 @@ namespace IVLab.ABREngine
         {
             RawDataset ds = new RawDataset();
             ds.bounds = mesh.bounds;
-            ds.dataTopology = DataTopology.Triangles;
+            ds.info.meshTopology = DataTopology.Triangles;
 
             ds.vectorArrays = new SerializableVectorArray[0];
             ds.vectorArrayNames = new string[0];
@@ -246,7 +246,7 @@ namespace IVLab.ABREngine
             }
 
             RawDataset ds = new RawDataset();
-            ds.dataTopology = DataTopology.LineStrip;
+            ds.info.meshTopology = DataTopology.LineStrip;
             ds.bounds = dataBounds;
 
             ds.vectorArrays = new SerializableVectorArray[0];
@@ -398,7 +398,7 @@ namespace IVLab.ABREngine
         )
         {
             RawDataset ds = new RawDataset();
-            ds.dataTopology = DataTopology.Points;
+            ds.info.meshTopology = DataTopology.Points;
             ds.bounds = dataBounds;
 
             int numVectors = vectorVars?.Count ?? 0;
@@ -676,7 +676,7 @@ namespace IVLab.ABREngine
             int numVectors = 0;
             ds.vectorArrayNames = new string[numVectors];
             ds.vectorArrays = new SerializableVectorArray[numVectors];
-            ds.dataTopology = DataTopology.Voxels;
+            ds.info.meshTopology = DataTopology.Voxels;
 
             return ds;
         }

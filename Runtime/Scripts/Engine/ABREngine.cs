@@ -27,6 +27,10 @@ using IVLab.Utilities;
 using UnityEngine;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using System.Runtime.ExceptionServices;
+using System.ComponentModel;
+using UnityEditor;
+using UnityEngine.AI;
 
 namespace IVLab.ABREngine
 {
@@ -279,6 +283,61 @@ namespace IVLab.ABREngine
         /// </summary>
         internal static readonly HttpClient httpClient = new HttpClient();
 
+        public float currentTime = -1f;
+        public float scaleTime = 0.0f;
+
+        public void SetScaleTime(float v)
+        {
+            scaleTime = v;
+            float min_t = 0f, max_t = 0f;
+
+            foreach (var impression in GetAllDataImpressions())
+            {
+                IKeyData ikd = impression.GetKeyData();
+                RawDataset rawdataset;
+                if (Data.TryGetRawDataset(ikd.Path, out rawdataset))
+                {
+                    if (rawdataset.info.isTimeVarying)
+                    {
+                        if (min_t > rawdataset.info.minTime) min_t = rawdataset.info.minTime;
+                        if (max_t < rawdataset.info.maxTime) max_t = rawdataset.info.maxTime;
+                    }
+                }
+            }
+
+            SetCurrentTime(min_t + v*(max_t - min_t));
+        }
+
+        public float GetScaleTime() { return scaleTime; }
+
+        public void SetCurrentTime(float t)
+        {       
+            currentTime = t;
+            bool somethingHasChanged = false;
+
+            foreach (var impression in GetAllDataImpressions())
+            {                
+                IKeyData ikd = impression.GetKeyData();
+                RawDataset rawdataset;
+                if (Data.TryGetRawDataset(ikd.Path, out rawdataset))
+                {
+                    if (rawdataset.info.isTimeVarying && rawdataset.UpdateTimestep())
+                    {
+                        somethingHasChanged = true;
+                        impression.RenderHints.DataChanged = true;
+                    }
+                }
+            }
+
+            if (somethingHasChanged)
+                Render();
+        }
+    
+        public float GetCurrentTime()
+        {
+            return currentTime;
+        }
+        
         protected override void Awake()
         {
             // Enable depth texture write on main cam so that volume rendering

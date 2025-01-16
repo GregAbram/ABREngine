@@ -160,8 +160,7 @@ namespace IVLab.ABREngine
                     if (textData.label != "")
                     {
                         RawDataset.JsonHeader json = JsonUtility.FromJson<RawDataset.JsonHeader>(textData.json);
-                        RawDataset.BinaryData b = new RawDataset.BinaryData(json, textData.bindata);
-                        RawDataset dataset = new RawDataset(json, b);
+                        RawDataset dataset = new RawDataset(json, textData.bindata);
 
                         try
                         {
@@ -186,9 +185,6 @@ namespace IVLab.ABREngine
                 else
                 {
                     Debug.Log("Waiting for all objects to update...");
-                    // "Ack" and "OK" all data
-                    await StreamMethods.WriteStringToStreamAsync(client.GetStream(), "ack", cancelToken);
-                    await StreamMethods.WriteStringToStreamAsync(client.GetStream(), "ok", cancelToken);
 
                     // After all data received, go ahead and update state...
                     // that essentially means flagging that data has changed for

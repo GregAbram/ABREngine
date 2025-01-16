@@ -252,6 +252,7 @@ namespace IVLab.ABREngine
             {
                 try
                 {
+                    Debug.LogFormat("trying loader {0}", loader.GetType().Name);
                     RawDataset ds = loader.LoadData(dataPath);
                     if (ds != null)
                     {
@@ -263,7 +264,7 @@ namespace IVLab.ABREngine
                 }
                 catch
                 {
-                    Debug.LogWarning($"Dataset `{dataPath}` not found in " + loader.GetType().Name);
+                    Debug.LogWarning($"XXX Dataset `{dataPath}` not found in " + loader.GetType().Name);
                 }
             }
             Debug.LogWarning($"Dataset `{dataPath}` not found in any data loader");
@@ -490,7 +491,7 @@ namespace IVLab.ABREngine
         private void ImportKeyData(string dataPath, RawDataset rawDataset, Dataset dataset)
         {
             // Infer the type of data from the topology
-            Type dataType = KeyDataMapping.typeMap[rawDataset.dataTopology];
+            Type dataType = KeyDataMapping.typeMap[rawDataset.info.meshTopology];
 
             // Use reflection to construct the object (should only match one)
             ConstructorInfo[] constructors = dataType.GetConstructors();

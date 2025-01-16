@@ -251,11 +251,11 @@ namespace IVLab.ABREngine
                     indices = new int[numIndices],
                     scalars = new Color[numPoints],
                     normals = null,
-                    topology = dataset.dataTopology
+                    topology = dataset.info.meshTopology
                 };
 
                 int numCells = dataset.cellIndexCounts.Length;
-                int cellSize = dataset.dataTopology == DataTopology.Quads ? 4 : 3;
+                int cellSize = dataset.info.meshTopology == DataTopology.Quads ? 4 : 3;
 
                 for (int i = 0; i < sourceVertCount; i++)
                 {

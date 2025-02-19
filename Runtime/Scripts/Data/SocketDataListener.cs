@@ -51,7 +51,7 @@ namespace IVLab.ABREngine
         [SerializeField]
         public TcpListener listener = null;
 
-        private ConcurrentQueue<string> updatedDataPaths;
+        public ConcurrentQueue<string> updatedDataPaths;
 
         public SocketDataListener(int port)
         {
@@ -174,7 +174,7 @@ namespace IVLab.ABREngine
                             // Load in the new data and save it to disk
                             ABREngine.Instance.Data.ImportRawDataset(textData.label, dataset);
                             ABREngine.Instance.Data.CacheRawDataset(textData.label, textData.json, textData.bindata);
-                            updatedDataPaths.Enqueue(textData.label);
+                            ABREngine.Instance.DataListener.updatedDataPaths.Enqueue(textData.label);
                         }
                         catch (Exception e)
                         {
@@ -192,12 +192,13 @@ namespace IVLab.ABREngine
                     // then re-rendering the scene.
                     try
                     {
-                        while (!updatedDataPaths.IsEmpty)
+                        while (!ABREngine.Instance.DataListener.updatedDataPaths.IsEmpty)
                         {
                             string dataPathUpdated;
-                            if (updatedDataPaths.TryDequeue(out dataPathUpdated))
+                            if (ABREngine.Instance.DataListener.updatedDataPaths.TryDequeue(out dataPathUpdated))
                             {
-                                ABREngine.Instance.GetDataImpression(di => di.GetKeyData()?.Path == dataPathUpdated).RenderHints.DataChanged = true;
+                                DataImpression di = ABREngine.Instance.GetDataImpression(di => di.GetKeyData()?.Path == dataPathUpdated);
+                                di.RenderHints.DataChanged = true;
                             }
                         }
                         await UnityThreadScheduler.Instance.RunMainThreadWork(() => ABREngine.Instance.Render());
@@ -206,7 +207,8 @@ namespace IVLab.ABREngine
                     {
                         Debug.LogError(e);
                     }
-
+                    
+                    await StreamMethods.WriteStringToStreamAsync(client.GetStream(), "ok", cancelToken);
                     Debug.Log("All objects have been unpacked, Sent label \"" + textData.label + "\" " + " ok");
                 }
             });

@@ -130,7 +130,7 @@ namespace IVLab.ABREngine
             visAssetFetchers.Add(new ResourceVisAssetFetcher());
 
             // ... and lastly check out the VisAsset server, if present
-            if (ABREngine.Instance.Config.visAssetServerUrl.Length > 0)
+            if (ABREngine.Instance.Config.visAssetServerUrl?.Length > 0)
             {
                 Debug.Log("Allowing loading of VisAssets from " + ABREngine.Instance.Config.visAssetServerUrl);
                 visAssetFetchers.Add(new HttpVisAssetFetcher(ABREngine.Instance.Config.visAssetServerUrl, this.appDataPath));

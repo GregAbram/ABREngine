@@ -358,12 +358,10 @@ namespace IVLab.ABREngine
             {
                 Config = Instantiate(configPrototype);
             }
-#if false
             else
             {
-                throw new Exception("ABR configuration not found, please create one first and select it in the ABREngine inspector.");
+                Config = new ABRConfig();
             }
-#endif
 
             // Initialize the default DataImpressionGroup (where impressions go
             // when they have no dataset) - guid zeroed out
@@ -406,7 +404,7 @@ namespace IVLab.ABREngine
             IsInitialized = true;
 
             // If a state in streaming assets or resources is specified, load it
-            if (Config.loadStateOnStart.Length > 0)
+            if (Config.loadStateOnStart?.Length > 0)
             {
                 try
                 {

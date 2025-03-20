@@ -358,10 +358,12 @@ namespace IVLab.ABREngine
             {
                 Config = Instantiate(configPrototype);
             }
+#if false
             else
             {
                 throw new Exception("ABR configuration not found, please create one first and select it in the ABREngine inspector.");
             }
+#endif
 
             // Initialize the default DataImpressionGroup (where impressions go
             // when they have no dataset) - guid zeroed out

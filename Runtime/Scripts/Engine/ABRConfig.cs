@@ -159,7 +159,7 @@ namespace IVLab.ABREngine
         ///     Default bounds for datasets when showing (in Unity world coordinates)
         /// </summary>
         [Tooltip("Unity world-space container to automatically 'squish' all data into to avoid overflowing Unity coordinates")]
-        public Bounds dataContainer;
+        public Bounds dataContainer = new Bounds(new Vector3(0, 0, 0), new Vector3(2, 2, 2));
 
         /// <summary>
         /// Override transform matrices for specific data impression groups.

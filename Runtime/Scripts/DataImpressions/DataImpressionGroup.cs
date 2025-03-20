@@ -380,7 +380,7 @@ namespace IVLab.ABREngine
                 // Look to see if this group's unity to data matrix has been
                 // overwritten... if so, skip the rest and don't auto-calculate
                 // new bounds
-                var overrideMatrix = ABREngine.Instance.Config.overrideGroupToDataMatrices.Find(
+                var overrideMatrix = ABREngine.Instance.Config.overrideGroupToDataMatrices?.Find(
                     o => o.groupUuid == this.Uuid.ToString() || o.groupName == this.Name || o.datasetPath == ds.Path
                 );
                 if (overrideMatrix != null)

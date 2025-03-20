@@ -197,8 +197,8 @@ namespace IVLab.ABREngine
                             string dataPathUpdated;
                             if (ABREngine.Instance.DataListener.updatedDataPaths.TryDequeue(out dataPathUpdated))
                             {
-                                DataImpression di = ABREngine.Instance.GetDataImpression(di => di.GetKeyData()?.Path == dataPathUpdated);
-                                di.RenderHints.DataChanged = true;
+                                IDataImpression idi = ABREngine.Instance.GetDataImpression(di => di.GetKeyData()?.Path == dataPathUpdated);
+                                idi.RenderHints.DataChanged = true;
                             }
                         }
                         await UnityThreadScheduler.Instance.RunMainThreadWork(() => ABREngine.Instance.Render());

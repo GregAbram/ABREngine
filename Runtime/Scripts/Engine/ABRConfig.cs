@@ -141,7 +141,7 @@ namespace IVLab.ABREngine
         ///     null
         /// </summary>
         [Tooltip("Port to listen for data connections (e.g. from ParaView on). A port `0` is assumed to mean no connection.")]
-        public int dataListenerPort;
+        public int dataListenerPort = 1900;
 
         [Header("Data Container Options")]
         /// <summary>

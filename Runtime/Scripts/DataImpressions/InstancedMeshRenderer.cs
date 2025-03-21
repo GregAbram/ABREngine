@@ -65,7 +65,7 @@ namespace IVLab.ABREngine
             argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
             UpdateBuffers();
 
-            //block = new MaterialPropertyBlock();
+            block = new MaterialPropertyBlock();
 
         }
 

@@ -424,6 +424,7 @@ namespace IVLab.ABREngine
             ABRConfig config = ABREngine.Instance.Config;
             foreach (ABRConfig.RemoteDataSource remote in config.remotes)
             {  
+#if false
                 try
                 {
                     MyStream ms = new MyStream(remote.host, remote.port);
@@ -439,6 +440,7 @@ namespace IVLab.ABREngine
                 {
                     Debug.Log(e.ToString());
                 }
+#endif
             }
             return null;
         }
@@ -491,6 +493,7 @@ namespace IVLab.ABREngine
 
             if (isRemote)
             {
+#if false
                 foreach (ABRConfig.RemoteDataSource remote in ABREngine.Instance.Config.remotes)
                 {
                     MyStream ms = new(remote.host, remote.port);
@@ -503,6 +506,7 @@ namespace IVLab.ABREngine
                         bytes = ms.ReadBytes();
                     }
                 }
+#endif
             }
             else
             {

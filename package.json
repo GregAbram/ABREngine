@@ -8,5 +8,5 @@
     "hideInEditor": "false",
     "dependencies": {
         "com.unity.textmeshpro": "2.1.6"
-    },
+    }
 }

@@ -294,7 +294,7 @@ namespace IVLab.ABREngine
 
             Debug.LogFormat("Using ABR Schema, version {0}", SchemaJson["properties"]["version"]["default"]);
 
-            string envDir = Environment.GetEnvironmentVariable("ABRConfig");
+            string envDir = Environment.GetEnvironmentVariable("ABR_ROOT");
             string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
             if (envDir == null)

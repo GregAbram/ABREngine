@@ -30,6 +30,8 @@ using Newtonsoft.Json.Schema;
 
 namespace IVLab.ABREngine
 {
+    public string abr_root = null;
+
     /// <summary>
     /// This Scriptable Object controls the ABR configuration before startup. On
     /// engine startup, a copy is instantiated for use at runtime.
@@ -294,13 +296,17 @@ namespace IVLab.ABREngine
 
             Debug.LogFormat("Using ABR Schema, version {0}", SchemaJson["properties"]["version"]["default"]);
 
-            string envDir = Environment.GetEnvironmentVariable("ABR_ROOT");
-            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (abr_root == null)
+            {
+                abr_root = Environment.GetEnvironmentVariable("ABR_ROOT");
+            }
 
-            if (envDir == null)
-                envDir = home;
-        
-            string cfgFile = Path.Combine(envDir, "abr.json");
+            if (abr_root == null)
+            {
+                abr_root = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            }
+
+            string cfgFile = Path.Combine(abr_root, "abr.json");
 
             try
             {

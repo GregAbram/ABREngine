@@ -268,7 +268,7 @@ namespace IVLab.ABREngine
                     renderInfo.vertices[i] = group.GroupToDataMatrix * dataset.vertexArray[j].ToHomogeneous();
                 }
 
-                Vector3[] dataNormals = null;
+                // Vector3[] dataNormals = null;
                 // Vector3[] meshNormals = null;
                 // if (ABRManager.IsValidNode(normalVariable))
                 // {
@@ -279,16 +279,22 @@ namespace IVLab.ABREngine
                 //    dataNormals = dataset.GetVectorArray("Normals");
                 //}
 
+                Vector3[] dataNormals = dataset.GetVectorArray("Normals_");
+                if (dataNormals == null)
+                {   
+                    dataNormals = dataset.GetVectorArray("Normals");
+                }
+
                 if (dataNormals != null)
                 {
                     renderInfo.normals = new Vector3[numPoints];
 
                     for (int i = 0; i < sourceVertCount; i++)
-                        renderInfo.normals[i] = dataNormals[i];
+                        renderInfo.normals[i] = -dataNormals[i];
 
                     // Backfaces 
                     for (int i = sourceVertCount, j = 0; i < numPoints; i++, j++)
-                        renderInfo.normals[i] = -dataNormals[j];
+                        renderInfo.normals[i] = dataNormals[j];
 
                 }
 

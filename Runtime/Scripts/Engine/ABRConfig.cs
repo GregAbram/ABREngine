@@ -27,21 +27,22 @@ using UnityEngine;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Schema;
+using System.Diagnostics.Tracing;
 
 namespace IVLab.ABREngine
 {
-    public string abr_root = null;
-
     /// <summary>
     /// This Scriptable Object controls the ABR configuration before startup. On
     /// engine startup, a copy is instantiated for use at runtime.
     /// </summary>
-    [CreateAssetMenu(fileName = "ABRConfig", menuName = "ABR/ABR Configuration")]
+    /// 
+    /// [CreateAssetMenu(fileName = "ABRConfig", menuName = "ABR/ABR Configuration")]
     public class ABRConfig : ScriptableObject
     { 
         /// Read config stuff in from a JSON file <summary>
              
-             
+        public string abr_root{get; set;} = null;
+        
         [System.Serializable]
         public class jvector
         {
@@ -296,6 +297,16 @@ namespace IVLab.ABREngine
 
             Debug.LogFormat("Using ABR Schema, version {0}", SchemaJson["properties"]["version"]["default"]);
 
+            var args = System.Environment.GetCommandLineArgs();
+            for (var i = 1; i < args.Length; i++)
+            {
+                if (args[i].Equals("-abr_root"))
+                {
+                    abr_root = args[i+1];
+                    break;
+                }
+            }
+
             if (abr_root == null)
             {
                 abr_root = Environment.GetEnvironmentVariable("ABR_ROOT");
@@ -319,6 +330,12 @@ namespace IVLab.ABREngine
 
                 serverUrl = cfg.serverURL;
                 mediaPath = cfg.mediaDirectory;
+
+                if (! System.IO.Path.IsPathRooted(mediaPath))
+                {
+                    mediaPath = Path.Combine(abr_root, mediaPath);
+                }
+
                 remotes = cfg.remotes;
                 center =  new Vector3(cfg.center.x, cfg.center.y, cfg.center.z);
                 scale = cfg.scale;

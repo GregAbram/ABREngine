@@ -193,6 +193,18 @@ namespace IVLab.ABREngine
                     Buffer.BlockCopy(bytes, offset, vertices, 0, nbytes);
                     offset = offset + nbytes;
                 }
+
+#if false
+                if (bdh.meshTopology == DataTopology.Triangles)
+                {
+                    for (int i = 0; i < bdh.num_points; i++)
+                    {
+                        float t = vertices[3*i + 1];
+                        vertices[3*i + 1] = vertices[3*i + 2];
+                        vertices[3*i + 2] = t;
+                    }
+                }
+#endif
                                 
                 Vector3 center = ABREngine.Instance.Config.center;
                 float scale = (float)ABREngine.Instance.Config.scale;
@@ -349,7 +361,7 @@ namespace IVLab.ABREngine
         // The path is relative to the media data folder.
         public static JsonHeader LoadHeaderLocal(string name)
         {
-            string dataDir = Path.Combine(ABREngine.Instance.Config.mediaPath, ABRConfig.Consts.DatasetFolder);
+            string dataDir = Path.Combine(ABREngine.Instance.Config.abr_root, ABREngine.Instance.Config.mediaPath, ABRConfig.Consts.DatasetFolder);
 
             string[] parts = name.Split('/');
 

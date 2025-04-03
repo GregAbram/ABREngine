@@ -184,31 +184,6 @@ namespace IVLab.ABREngine
                 }
                 else
                 {
-                    Debug.Log("Waiting for all objects to update...");
-
-                    // After all data received, go ahead and update state...
-                    // that essentially means flagging that data has changed for
-                    // every data impression that depends on the updated data,
-                    // then re-rendering the scene.
-                    try
-                    {
-#if false
-                        while (!ABREngine.Instance.DataListener.updatedDataPaths.IsEmpty)
-                        {
-                            string dataPathUpdated;
-                            if (ABREngine.Instance.DataListener.updatedDataPaths.TryDequeue(out dataPathUpdated))
-                            {
-                                IDataImpression idi = ABREngine.Instance.GetDataImpression(di => di.GetKeyData()?.Path == dataPathUpdated);
-                                idi.RenderHints.DataChanged = true;
-                            }
-                        }
-#endif
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogError(e);
-                    }
-                    
                     await StreamMethods.WriteStringToStreamAsync(client.GetStream(), "ok", cancelToken);
                     Debug.Log("All objects have been unpacked, Sent label \"" + textData.label + "\" " + " ok");
                     await UnityThreadScheduler.Instance.RunMainThreadWork(() => ABREngine.Instance.Render());

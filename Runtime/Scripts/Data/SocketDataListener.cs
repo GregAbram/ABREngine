@@ -150,23 +150,16 @@ namespace IVLab.ABREngine
                 Debug.Log("Accepting data stream for label \"" + textData.label + "\"");
                 if (textData.label != "update")
                 {
-                    // We don't need to wait to send "ok" because this isn't an update.
-                    // We do, however, need to first log that there's a dataset to handle
-                    // to make the update wait for it.
-
-                    await StreamMethods.WriteStringToStreamAsync(client.GetStream(), "ok", cancelToken);
-                    Debug.Log("Sent label \"" + textData.label + "\" " + " ok");
-
+  
                     if (textData.label != "")
                     {
                         RawDataset.JsonHeader json = JsonUtility.FromJson<RawDataset.JsonHeader>(textData.json);
-                        RawDataset dataset = new RawDataset(json, textData.bindata);
+                        RawDataset dataset = new(json, textData.bindata);
 
                         try
                         {
                             // Unload the outdated version of the dataset
-                            RawDataset _dataset;
-                            if (ABREngine.Instance.Data.TryGetRawDataset(textData.label, out _dataset))
+                            if (ABREngine.Instance.Data.TryGetRawDataset(textData.label, out RawDataset _dataset))
                             {
                                 ABREngine.Instance.Data.UnloadRawDataset(textData.label);
                             }
@@ -174,7 +167,14 @@ namespace IVLab.ABREngine
                             // Load in the new data and save it to disk
                             ABREngine.Instance.Data.ImportRawDataset(textData.label, dataset);
                             ABREngine.Instance.Data.CacheRawDataset(textData.label, textData.json, textData.bindata);
-                            ABREngine.Instance.DataListener.updatedDataPaths.Enqueue(textData.label);
+
+                            foreach  (var idi in ABREngine.Instance.GetDataImpressions(textData.label))
+                            {
+                                idi.RenderHints.DataChanged = true;
+                            }
+
+                            await StreamMethods.WriteStringToStreamAsync(client.GetStream(), "ok", cancelToken);
+                            Debug.Log("Sent label \"" + textData.label + "\" " + " ok");
                         }
                         catch (Exception e)
                         {
@@ -192,6 +192,7 @@ namespace IVLab.ABREngine
                     // then re-rendering the scene.
                     try
                     {
+#if false
                         while (!ABREngine.Instance.DataListener.updatedDataPaths.IsEmpty)
                         {
                             string dataPathUpdated;
@@ -201,7 +202,7 @@ namespace IVLab.ABREngine
                                 idi.RenderHints.DataChanged = true;
                             }
                         }
-                        await UnityThreadScheduler.Instance.RunMainThreadWork(() => ABREngine.Instance.Render());
+#endif
                     }
                     catch (Exception e)
                     {
@@ -210,6 +211,7 @@ namespace IVLab.ABREngine
                     
                     await StreamMethods.WriteStringToStreamAsync(client.GetStream(), "ok", cancelToken);
                     Debug.Log("All objects have been unpacked, Sent label \"" + textData.label + "\" " + " ok");
+                    await UnityThreadScheduler.Instance.RunMainThreadWork(() => ABREngine.Instance.Render());
                 }
             });
 

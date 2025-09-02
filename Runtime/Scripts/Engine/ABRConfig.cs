@@ -300,7 +300,7 @@ namespace IVLab.ABREngine
             var args = System.Environment.GetCommandLineArgs();
             for (var i = 1; i < args.Length; i++)
             {
-                if (args[i].Equals("-abr_root"))
+                if (args[i].Equals("-ABRConfig"))
                 {
                     abr_root = args[i+1];
                     break;

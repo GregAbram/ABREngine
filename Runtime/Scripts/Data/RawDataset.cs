@@ -241,7 +241,7 @@ namespace IVLab.ABREngine
                     vector_arrays[j] = new float[3 * bdh.num_points];
                     Buffer.BlockCopy(bytes, offset, vector_arrays[j], 0, nbytes);
                     offset = offset + nbytes;
-
+#if false
                     for (int i = 0; i < 3*bdh.num_points; )
                     {
                         vector_arrays[j][i] = ((vector_arrays[j][i] - translation.x) * scale) + center.x;
@@ -251,6 +251,7 @@ namespace IVLab.ABREngine
                         vector_arrays[j][i] = ((vector_arrays[j][i] - translation.z) * scale) + center.z;
                         i++;
                     }
+#endif
                 }
             }
 

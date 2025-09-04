@@ -205,8 +205,36 @@ namespace IVLab.ABREngine
                 renderInfo.bounds.SetMinMax(min, max);
 
                 // Use new bounds to construct mesh geometry volume will be rendered on
+#if true
+                Vector3 center = ABREngine.Instance.Config.center;
+                float scale = (float)ABREngine.Instance.Config.scale;
+
+                float xdim = (dataset.info.dimensions[0] - 1) * dataset.info.spacing[0];
+                float ydim = (dataset.info.dimensions[1] - 1) * dataset.info.spacing[1];
+                float zdim = (dataset.info.dimensions[2] - 1) * dataset.info.spacing[2];
+
+                Vector3 origin = new Vector3(dataset.info.origin[0], dataset.info.origin[1], dataset.info.origin[2]);
+
+                renderInfo.vertices = new Vector3[8] {
+                    origin + new Vector3(0,    0,    0),
+                    origin + new Vector3(xdim, 0,    0),
+                    origin + new Vector3(xdim, ydim, 0),
+                    origin + new Vector3(0,    ydim, 0),
+                    origin + new Vector3(0,    ydim, zdim),
+                    origin + new Vector3(xdim, ydim, zdim),
+                    origin + new Vector3(xdim, 0,    zdim),
+                    origin + new Vector3(0,    0,    zdim)
+                };
+
+                for (int i = 0; i < 8; i++)
+                {
+                    renderInfo.vertices[i] = (renderInfo.vertices[i] - center) * scale;
+                    renderInfo.vertices[i].z = -renderInfo.vertices[i].z;
+                }
+#else
                 Vector3 center = renderInfo.bounds.center;
                 Vector3 extents = renderInfo.bounds.extents;
+
                 renderInfo.vertices = new Vector3[8] {
                     center + new Vector3(-extents.x, -extents.y, -extents.z),
                     center + new Vector3(extents.x, -extents.y, -extents.z),
@@ -217,6 +245,7 @@ namespace IVLab.ABREngine
                     center + new Vector3(extents.x, -extents.y, extents.z),
                     center + new Vector3(-extents.x, -extents.y, extents.z)
                 };
+#endif
                 renderInfo.triangles = new int[36] {
                     0, 2, 1, //face front
                     0, 3, 2,
@@ -231,9 +260,16 @@ namespace IVLab.ABREngine
                     0, 6, 7, //face bottom
                     0, 1, 6
                 };
-
-                // Setup the 3D volume texture
+#if false
+                for (int i = 0; i < 36; i += 3)
+                {
+                    int t = renderInfo.triangles[i + 1];
+                    renderInfo.triangles[i + 1] = renderInfo.triangles[i + 2];
+                    renderInfo.triangles[i + 2] = t;
+                }
+#endif
                 renderInfo.stepCount = dataset.dimensions.magnitude;
+
                 Vector3Int dimensions = dataset.dimensions;
                 renderInfo.voxelTex = new Texture3D(
                     dimensions.x,
@@ -400,6 +436,10 @@ namespace IVLab.ABREngine
             meshRenderer.GetPropertyBlock(MatPropBlock);
             MatPropBlock.SetFloat("_ColorDataMin", colorVariableMin);
             MatPropBlock.SetFloat("_ColorDataMax", colorVariableMax);
+
+            volumeBrightnessOut = 1;
+            volumeOpacityMultiplierOut = 1;
+
             MatPropBlock.SetFloat("_VolumeBrightness", volumeBrightnessOut);
             MatPropBlock.SetFloat("_OpacityMultiplier", volumeOpacityMultiplierOut);
             MatPropBlock.SetInt("_UseLighting", volumeLightingOut ? 1 : 0);

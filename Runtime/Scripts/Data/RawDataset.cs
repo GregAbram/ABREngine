@@ -154,7 +154,10 @@ namespace IVLab.ABREngine
             public string[] scalarArrayNames;
             public string[] vectorArrayNames;
             public Bounds bounds;
-            public int[] dimensions;
+            public int[] dimensions;           
+             public float[] origin;
+            public float[] spacing;
+
             public float[] scalarMaxes;
             public float[] scalarMins;
             public float[] timesteps;
@@ -184,6 +187,7 @@ namespace IVLab.ABREngine
             {
                 int offset = 0;
                 int nbytes;
+                int num_points;
 
                 // No vertices stored in binary for volumes
                 if (bdh.meshTopology != DataTopology.Voxels)
@@ -192,7 +196,11 @@ namespace IVLab.ABREngine
                     nbytes = 3 * bdh.num_points * sizeof(float);
                     Buffer.BlockCopy(bytes, offset, vertices, 0, nbytes);
                     offset = offset + nbytes;
+                    num_points = bdh.num_points;
                 }
+                else
+                    num_points = bdh.dimensions[0] * bdh.dimensions[1] * bdh.dimensions[2];
+
 
 #if false
                 if (bdh.meshTopology == DataTopology.Triangles)
@@ -205,12 +213,12 @@ namespace IVLab.ABREngine
                     }
                 }
 #endif
-                                
+
                 Vector3 center = ABREngine.Instance.Config.center;
                 float scale = (float)ABREngine.Instance.Config.scale;
 
-                if (! ABREngine.Instance.Config.useAutoDataContainer)
-                    for (int i = 0; i < 3*bdh.num_points; )
+                if (!ABREngine.Instance.Config.useAutoDataContainer)
+                    for (int i = 0; i < 3 * bdh.num_points;)
                     {
                         vertices[i] = (vertices[i] - center.x) * scale;
                         i++;
@@ -226,32 +234,23 @@ namespace IVLab.ABREngine
                 offset = offset + nbytes;
 
                 scalar_arrays = new float[bdh.scalarArrayNames.Length][];
-                nbytes = bdh.num_points * sizeof(float);
+                nbytes = num_points * sizeof(float);
                 for (int i = 0; i < bdh.scalarArrayNames.Length; i++)
                 {
-                    scalar_arrays[i] = new float[bdh.num_points];
+                    scalar_arrays[i] = new float[num_points];
                     Buffer.BlockCopy(bytes, offset, scalar_arrays[i], 0, nbytes);
                     offset = offset + nbytes;
                 }
 
                 vector_arrays = new float[bdh.vectorArrayNames.Length][];
-                nbytes = 3 * bdh.num_points * sizeof(float);
+                nbytes = 3 * num_points * sizeof(float);
                 for (int j = 0; j < bdh.vectorArrayNames.Length; j++)
                 {
-                    vector_arrays[j] = new float[3 * bdh.num_points];
+                    vector_arrays[j] = new float[3 * num_points];
                     Buffer.BlockCopy(bytes, offset, vector_arrays[j], 0, nbytes);
+                    for (int v = 0; v < num_points; v++)
+                        vector_arrays[j][v * 3 + 2] = -vector_arrays[j][v * 3 + 2];
                     offset = offset + nbytes;
-#if false
-                    for (int i = 0; i < 3*bdh.num_points; )
-                    {
-                        vector_arrays[j][i] = ((vector_arrays[j][i] - translation.x) * scale) + center.x;
-                        i++;
-                        vector_arrays[j][i] = ((vector_arrays[j][i] - translation.y) * scale) + center.y;
-                        i++;
-                        vector_arrays[j][i] = ((vector_arrays[j][i] - translation.z) * scale) + center.z;
-                        i++;
-                    }
-#endif
                 }
             }
 

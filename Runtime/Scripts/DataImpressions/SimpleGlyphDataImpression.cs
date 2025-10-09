@@ -315,8 +315,15 @@ namespace IVLab.ABREngine
             }
         }
 
+        bool first = true;
+
         public override void SetupGameObject(EncodedGameObject currentGameObject)
         {
+            if (!first) return;
+            first = false;
+
+            base.SetupGameObject(currentGameObject);
+            
             var SSrenderData = RenderInfo as SimpleGlyphRenderInfo;
             if (currentGameObject == null)
             {

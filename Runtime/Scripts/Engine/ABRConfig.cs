@@ -71,6 +71,7 @@ namespace IVLab.ABREngine
             public string serverURL;     
             public bool useAutoDataContainer;   
             public jvector center;
+            public jvector rotation;
             public double scale;
             public ExternalDataContainer container;
             public RemoteDataSource[] remotes;
@@ -157,6 +158,7 @@ namespace IVLab.ABREngine
 
         public double scale;
         public Vector3 center;
+        public Vector3 rotation;
 
         /// <summary>
         ///     Default bounds for datasets when showing (in Unity world coordinates)
@@ -218,7 +220,9 @@ namespace IVLab.ABREngine
         void Awake()
         {
             // Debug.Log("ABR Config Loaded");
-
+            defaultGlyph = Resources.Load<GameObject>("DefaultSphere");
+            defaultGlyph.SetActive(false);
+            
             // Check for a backed up schema
             string backupSchemaDir = Path.Combine(Application.streamingAssetsPath, "schemas");
             string backupSchema = null;
@@ -318,11 +322,12 @@ namespace IVLab.ABREngine
             }
 
             string cfgFile = Path.Combine(abr_root, "abr.json");
-
+            File.AppendAllText("C:\\Users\\gda\\debug.txt", string.Format("ABRROOT {0}", abr_root));
+            
             try
             {
                 StreamReader reader = new StreamReader(cfgFile);
-                string json = reader.ReadToEnd();            
+                string json = reader.ReadToEnd();
                 Debug.Log(json);
                 ExternalConfiguration cfg = new ExternalConfiguration();
                 cfg = JsonUtility.FromJson<ExternalConfiguration>(json);
@@ -331,23 +336,24 @@ namespace IVLab.ABREngine
                 serverUrl = cfg.serverURL;
                 mediaPath = cfg.mediaDirectory;
 
-                if (! System.IO.Path.IsPathRooted(mediaPath))
+                if (!System.IO.Path.IsPathRooted(mediaPath))
                 {
                     mediaPath = Path.Combine(abr_root, mediaPath);
                 }
 
                 remotes = cfg.remotes;
-                center =  new Vector3(cfg.center.x, cfg.center.y, cfg.center.z);
+                center = new Vector3(cfg.center.x, cfg.center.y, cfg.center.z);
+                rotation = new Vector3(cfg.rotation.x, cfg.rotation.y, cfg.rotation.z);
                 scale = cfg.scale;
 
                 useAutoDataContainer = cfg.useAutoDataContainer;
                 if (cfg.container != null)
                 {
-                    dataContainer.center = new Vector3(cfg.container.center.x, cfg.container.center.y, cfg.container.center.z);              
+                    dataContainer.center = new Vector3(cfg.container.center.x, cfg.container.center.y, cfg.container.center.z);
                     dataContainer.extents = new Vector3(cfg.container.extent.x, cfg.container.extent.y, cfg.container.extent.z);
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Debug.Log("No external config file");
             }

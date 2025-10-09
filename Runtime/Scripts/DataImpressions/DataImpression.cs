@@ -193,7 +193,13 @@ namespace IVLab.ABREngine
 
         public virtual void ComputeGeometry() { }
 
-        public virtual void SetupGameObject(EncodedGameObject currentGameObject) { }
+        public virtual void SetupGameObject(EncodedGameObject currentGameObject)
+        {
+            foreach (var i in ABREngine.Instance.hitActions)
+            {
+                Debug.Log(i.name);
+            }
+        }
 
         public virtual void UpdateStyling(EncodedGameObject currentGameObject) { }
 

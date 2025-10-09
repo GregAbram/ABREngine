@@ -97,6 +97,8 @@ namespace IVLab.ABREngine
     [System.Serializable]
     public class RawDataset
     {
+        public string dataPath;
+        
         [SerializeField]
         public Vector3[] vertexArray;
 
@@ -214,6 +216,8 @@ namespace IVLab.ABREngine
                 }
 #endif
 
+#if false
+
                 Vector3 center = ABREngine.Instance.Config.center;
                 float scale = (float)ABREngine.Instance.Config.scale;
 
@@ -227,7 +231,7 @@ namespace IVLab.ABREngine
                         vertices[i] = (vertices[i] - center.z) * scale;
                         i++;
                     }
-
+#endif
                 index_array = new int[bdh.num_cell_indices];
                 nbytes = bdh.num_cell_indices * sizeof(int);
                 Buffer.BlockCopy(bytes, offset, index_array, 0, nbytes);
@@ -376,7 +380,7 @@ namespace IVLab.ABREngine
             
             JsonHeader hdr = LoadHeaderString(File.ReadAllText(jsonPath));
 
-            string[] binFiles = Directory.GetFiles(dataDir, dataName + "-*.tstep");                
+            string[] binFiles = Directory.GetFiles(dataDir, dataName + "-*.tstep");
             if (binFiles.Length > 0)
             {
                 //binFiles = Directory.GetFiles(dataDir, dataName + "-*.tstep");                
@@ -391,7 +395,7 @@ namespace IVLab.ABREngine
 
                     if (s1.Length > 1)
                     {
-                        string timestring = s1[s1.Length - 1];  
+                        string timestring = s1[s1.Length - 1];
                         var c = Regex.Matches(timestring, @"\d?[\.\d?]*");
 
                         if (c.Count > 0)
@@ -402,7 +406,7 @@ namespace IVLab.ABREngine
                     }
                 }
 
-                List<Tuple<double, string>> sortedList = tupleList.OrderBy(o=>o.Item1).ToList();
+                List<Tuple<double, string>> sortedList = tupleList.OrderBy(o => o.Item1).ToList();
 
                 hdr.timestepFiles = new string[sortedList.Count];
                 hdr.timesteps = new float[sortedList.Count];
@@ -417,9 +421,11 @@ namespace IVLab.ABREngine
                 hdr.isTimeVarying = true;
                 hdr.minTime = hdr.timesteps[0];
                 hdr.maxTime = hdr.timesteps[hdr.timesteps.Length - 1];
+
+                ABREngine.Instance.UpdateTimeRange(hdr.minTime, hdr.maxTime);
             }
             else
-            {   
+            {
                 hdr.timestepFiles = new string[1];
                 hdr.timesteps = new float[1];
                 hdr.timestepFiles[0] = jsonPath;

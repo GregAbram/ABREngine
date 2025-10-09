@@ -33,6 +33,7 @@ namespace IVLab.ABREngine
 {
     public struct SocketTextData
     {
+        public string tag;
         public string label;
         public string json;
         public string data;
@@ -71,7 +72,7 @@ namespace IVLab.ABREngine
 
         public void StopServer()
         {
-            listener.Stop();
+            listener?.Stop();
             listener = null;
         }
 
@@ -101,11 +102,12 @@ namespace IVLab.ABREngine
         {
             SocketTextData ptd = new SocketTextData
             {
+                tag = "",
                 label = "",
                 data = "",
             };
 
-            ptd.label = await StreamMethods.ReadStringFromStreamAsync(client.GetStream(), cancelToken);
+            ptd.tag = await StreamMethods.ReadStringFromStreamAsync(client.GetStream(), cancelToken);
 
             return ptd;
         }
@@ -114,8 +116,12 @@ namespace IVLab.ABREngine
         {
             SocketTextData ptd = await GetSocketLabelAsync(client, cancelToken);
 
-            if (ptd.label != "update")
+            if (ptd.tag == "series")
+                Debug.Log("Series");
+                
+            if (ptd.tag != "update")
             {
+                ptd.label = await StreamMethods.ReadStringFromStreamAsync(client.GetStream(), cancelToken);
                 ptd.json = await GetSocketTextAsync(client, cancelToken);
                 ptd.bindata = await GetSocketDataAsync(client, cancelToken);
             }
@@ -148,9 +154,8 @@ namespace IVLab.ABREngine
 
                 SocketTextData textData = await textDataTask;
                 Debug.Log("Accepting data stream for label \"" + textData.label + "\"");
-                if (textData.label != "update")
+                if (textData.tag != "update")
                 {
-  
                     if (textData.label != "")
                     {
                         RawDataset.JsonHeader json = JsonUtility.FromJson<RawDataset.JsonHeader>(textData.json);
@@ -166,7 +171,7 @@ namespace IVLab.ABREngine
 
                             // Load in the new data and save it to disk
                             ABREngine.Instance.Data.ImportRawDataset(textData.label, dataset);
-                            ABREngine.Instance.Data.CacheRawDataset(textData.label, textData.json, textData.bindata);
+                            ABREngine.Instance.Data.CacheRawDataset(textData.tag, textData.label, textData.json, textData.bindata);
 
                             foreach  (var idi in ABREngine.Instance.GetDataImpressions(textData.label))
                             {

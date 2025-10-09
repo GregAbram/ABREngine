@@ -168,10 +168,19 @@ namespace IVLab.ABREngine
     {
         private Dictionary<Guid, DataImpressionGroup> dataImpressionGroups = new Dictionary<Guid, DataImpressionGroup>();
 
+        [Serializable]
+        public struct HitAction
+        {
+            public string name;
+            public string actionClassName;
+        }
+
+        public HitAction[] hitActions;
+        
         /// <summary>
         /// JSON representation of the state that has been previously loaded into ABR
         /// </summary>
-        public JObject State { get { return previouslyLoadedState; }}
+        public JObject State { get { return previouslyLoadedState; } }
         private JObject previouslyLoadedState = null;
         private string previousStateName = "Untitled";
         private ABRStateParser stateParser = null;
@@ -272,7 +281,6 @@ namespace IVLab.ABREngine
         /// Cached, readonly version of the ABREngine transform so it can be accessed in a non-main thread
         /// </summary>
         public Transform ABRTransform { get; private set; }
-
         /// <summary>
         /// Provides access to all of the ABRConfig options that were loaded in at startup
         /// </summary>
@@ -286,26 +294,42 @@ namespace IVLab.ABREngine
         public float currentTime = -1f;
         public float scaleTime = 0.0f;
 
+        float minTime = -1, maxTime = -1;
+
+        public void GetTimeRange(out float tMin, out float tMax)
+        {
+            tMin = minTime;
+            tMax = maxTime;
+        }
+
+        public void UpdateTimeRange(float tMin, float tMax)
+        {
+            if (minTime == -1 || tMin < minTime) minTime = tMin;
+            if (maxTime == -1 || tMax > maxTime) maxTime = tMax;
+        }
+
+        int ttt = 0;
+
         public void SetScaleTime(float v)
         {
-            scaleTime = v;
-            float min_t = 0f, max_t = 0f;
-
-            foreach (var impression in GetAllDataImpressions())
+#if false
+            if (v < 0)
             {
-                IKeyData ikd = impression.GetKeyData();
-                RawDataset rawdataset;
-                if (Data.TryGetRawDataset(ikd.Path, out rawdataset))
-                {
-                    if (rawdataset.info.isTimeVarying)
-                    {
-                        if (min_t > rawdataset.info.minTime) min_t = rawdataset.info.minTime;
-                        if (max_t < rawdataset.info.maxTime) max_t = rawdataset.info.maxTime;
-                    }
-                }
+                ttt = 0;
+                scaleTime = 0;
+                SetCurrentTime(minTime);
             }
-
-            SetCurrentTime(min_t + v*(max_t - min_t));
+            else
+            {
+                float t = (minTime + ttt * 4);
+                scaleTime = t / (maxTime - minTime);
+                SetCurrentTime(t);
+                ttt = ttt + 1;
+            }
+#else
+            scaleTime = v;
+            SetCurrentTime(minTime + v * (maxTime - minTime));
+#endif
         }
 
         public float GetScaleTime() { return scaleTime; }
@@ -362,6 +386,11 @@ namespace IVLab.ABREngine
             {
                 Config = new ABRConfig();
             }
+
+            // Apply world to local transformation
+            gameObject.transform.localPosition = Config.center;
+            gameObject.transform.localScale = new Vector3((float)Config.scale, (float)Config.scale, (float)Config.scale);
+            gameObject.transform.eulerAngles = Config.rotation;
 
             // Initialize the default DataImpressionGroup (where impressions go
             // when they have no dataset) - guid zeroed out

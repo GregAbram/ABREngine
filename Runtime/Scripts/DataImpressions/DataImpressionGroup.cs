@@ -135,6 +135,29 @@ namespace IVLab.ABREngine
                 impressionGameObject.transform.parent = GroupRoot.transform;
                 impressionGameObject.name = impression.GetType().ToString();
 
+                KeyData kd = impression.GetKeyData();
+                string path = kd.Path;
+                string name = path.Split('/')[3];
+                Debug.Log(name);
+
+                var types = typeof(object).Assembly.GetTypes();
+                foreach (var t in types)
+                {
+                    string a = t.FullName.Split('.')[0];
+                    if (a != "System")
+                        Debug.Log(t.FullName);
+                }
+
+                foreach (var i in ABREngine.Instance.hitActions)
+                    {
+                        if (i.name == name)
+                        {
+                            Type t = Type.GetType(i.actionClassName);
+                            if (t != null && t.IsSubclassOf(typeof(Component)))
+                                impressionGameObject.AddComponent(t);
+                        }
+                    }
+
                 EncodedGameObject ego = impressionGameObject.AddComponent<EncodedGameObject>();
                 gameObjectMapping[impression.Uuid] = ego;
             }
@@ -445,6 +468,7 @@ namespace IVLab.ABREngine
         ///     <li>Only toggle visibility if only that has changed</li>
         /// </ol>
         /// </summary>
+        /// 
         public void RenderImpressions()
         {
             try
@@ -508,12 +532,13 @@ namespace IVLab.ABREngine
         {
             // Make sure the parent is assigned properly
             gameObjectMapping[impression.Uuid].gameObject.transform.SetParent(GroupRoot.transform, false);
-            
+
             // Unsure why this needs to be explicitly set but here it is,
             // zeroing position and rotation so each data impression encoded
             // game object is centered on the dataset...
             gameObjectMapping[impression.Uuid].gameObject.transform.localPosition = Vector3.zero;
             gameObjectMapping[impression.Uuid].gameObject.transform.localRotation = Quaternion.identity;
+            gameObjectMapping[impression.Uuid].gameObject.transform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
 
             // Display the UUID in editor
             gameObjectMapping[impression.Uuid].Uuid = impression.Uuid;

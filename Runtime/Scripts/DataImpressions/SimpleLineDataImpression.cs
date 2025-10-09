@@ -442,6 +442,8 @@ namespace IVLab.ABREngine
                 return;
             }
 
+            base.SetupGameObject(currentGameObject);
+
             // Find ABR Layer
             int layerID = LayerMask.NameToLayer(LayerName);
             if (layerID < 0)

@@ -353,6 +353,8 @@ namespace IVLab.ABREngine
                 return;
             }
 
+            base.SetupGameObject(currentGameObject);
+
             // Setup mesh renderer and mesh filter
             MeshFilter meshFilter = null;
             MeshRenderer meshRenderer = null;

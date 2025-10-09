@@ -254,6 +254,8 @@ namespace IVLab.ABREngine
                 {
                     Debug.LogFormat("trying loader {0}", loader.GetType().Name);
                     RawDataset ds = loader.LoadData(dataPath);
+                    ds.dataPath = dataPath;
+                    
                     if (ds != null)
                     {
                         Debug.Log($"Dataset `{dataPath} loaded from " + loader.GetType().Name);
@@ -376,18 +378,18 @@ namespace IVLab.ABREngine
         public void CacheRawDataset(string dataPath, RawDataset rds)
         {
             Tuple<string, byte[]> dataPair = rds.ToFilePair();
-            CacheRawDataset(dataPath, dataPair.Item1, dataPair.Item2);
+            CacheRawDataset("dataset", dataPath, dataPair.Item1, dataPair.Item2);
         }
 
         /// <summary>
         /// Save a copy of the RawDataset described by `json` and `data` to the
         /// media folder.
         /// </summary>
-        public void CacheRawDataset(string dataPath, in string json, in byte[] data)
+        public void CacheRawDataset(string tag, string dataPath, in string json, in byte[] data)
         {
             Debug.Log("Saving " + dataPath + " to " + this.appDataPath);
 
-            FileInfo jsonFile = GetRawDatasetMetadataFile(dataPath);
+            FileInfo jsonFile = GetRawDatasetMetadataFile(tag, dataPath);
 
             if (!jsonFile.Directory.Exists)
             {
@@ -399,16 +401,31 @@ namespace IVLab.ABREngine
                 file.Write(json);
             }
 
-            FileInfo binFile = new FileInfo(Path.Combine(this.appDataPath, dataPath + ".bin"));
 
-            FileStream fs = File.Create(binFile.FullName);
-            fs.Write(data, 0, data.Length);
-            fs.Close();
+            if (data.Length > 0)
+            {
+                FileInfo binFile = new FileInfo(Path.Combine(this.appDataPath, dataPath + ".bin"));
+                FileStream fs = File.Create(binFile.FullName);
+                fs.Write(data, 0, data.Length);
+                fs.Close();
+            }
+            
         }
 
-        private FileInfo GetRawDatasetMetadataFile(string dataPath)
+        private FileInfo GetRawDatasetMetadataFile(string tag, string dataPath)
         {
-            return new System.IO.FileInfo(System.IO.Path.Combine(this.appDataPath, dataPath + ".json"));
+            string extension;
+
+            if (tag == "dataset" || tag == "series")
+            {
+                extension = ".json";
+            }
+            else
+            {
+                extension = ".tstep";
+            }
+
+                return new System.IO.FileInfo(System.IO.Path.Combine(this.appDataPath, dataPath + extension));
         }
         private FileInfo GetRawDatasetBinaryFile(string dataPath)
         {

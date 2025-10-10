@@ -462,7 +462,7 @@ namespace IVLab.ABREngine
                 float glyphDensityOut = glyphDensity?.Value ??
                     config.GetInputValueDefault<PercentPrimitive>(plateType, "Glyph Density").Value;
                 glyphDensityOut = Mathf.Clamp01(glyphDensityOut);
-                if (imr.instanceDensity != glyphDensityOut)
+                if (imr.instanceDensity != glyphDensityOut || RenderHints.DataChanged)
                 {
                     // Sample number of glyphs based on density
                     int sampleSize = (int)(numPoints * glyphDensityOut);

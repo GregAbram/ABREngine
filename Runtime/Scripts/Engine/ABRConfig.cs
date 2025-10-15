@@ -321,8 +321,9 @@ namespace IVLab.ABREngine
                 abr_root = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             }
 
+            
             string cfgFile = Path.Combine(abr_root, "abr.json");
-            File.AppendAllText("C:\\Users\\gda\\debug.txt", string.Format("ABRROOT {0}", abr_root));
+            File.AppendAllText("C:\\Users\\abr\\debug.txt", string.Format("ABRROOT {0}", abr_root));
             
             try
             {

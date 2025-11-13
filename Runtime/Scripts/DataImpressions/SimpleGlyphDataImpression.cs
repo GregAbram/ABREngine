@@ -173,6 +173,11 @@ namespace IVLab.ABREngine
         protected override string[] MaterialNames { get; } = { "ABR_Glyphs", "ABR_GlyphsOutline" };
         protected override string LayerName { get; } = "ABR_Glyph";
 
+        protected float[] glyphMeshSizes;
+        protected float glyphMeshScale = 1.0f;
+
+        protected Vector3[] positions;
+
         /// <summary>
         ///     Construct a data impession with a given UUID. Note that this
         ///     will be called from ABRState and must assume that there's a
@@ -214,7 +219,7 @@ namespace IVLab.ABREngine
                 int numPoints = dataset.vertexArray.Length;
 
                 // Compute positions for each point, in room (Unity) space
-                Vector3[] positions = new Vector3[numPoints];
+                positions = new Vector3[numPoints];
                 for (int i = 0; i < numPoints; i++)
                 {
                     positions[i] = group.GroupToDataMatrix * dataset.vertexArray[i].ToHomogeneous();
@@ -301,12 +306,11 @@ namespace IVLab.ABREngine
                 // Get glyph scale and apply to instance mesh renderer transform
                 ABRConfig config = ABREngine.Instance.Config;
                 string plateType = this.GetType().GetCustomAttribute<ABRPlateType>().plateType;
-                float glyphScale = glyphSize?.Value ??
-                    config.GetInputValueDefault<LengthPrimitive>(plateType, "Glyph Size").Value;
+                glyphMeshScale = config.GetInputValueDefault<LengthPrimitive>(plateType, "Glyph Size").Value;
 
                 for (int i = 0; i < numPoints; i++)
                 {
-                    encodingRenderInfo.transforms[i] = Matrix4x4.TRS(positions[i], orientations[i], Vector3.one * glyphScale);
+                    encodingRenderInfo.transforms[i] = Matrix4x4.TRS(positions[i], orientations[i], Vector3.one * glyphMeshScale);
                 }
 
                 // Apply room-space bounds to renderer
@@ -319,16 +323,21 @@ namespace IVLab.ABREngine
 
         public override void SetupGameObject(EncodedGameObject currentGameObject)
         {
+            if (currentGameObject == null)
+                return;
+  
             if (!first) return;
             first = false;
 
             base.SetupGameObject(currentGameObject);
+
+            GameObject renderers = new GameObject("Glyph Renderers");
+            renderers.transform.SetParent(currentGameObject.transform, false);
+
+            GameObject colliders = new GameObject("Glyph Colliders");
+            colliders.transform.SetParent(currentGameObject.transform, false);
             
             var SSrenderData = RenderInfo as SimpleGlyphRenderInfo;
-            if (currentGameObject == null)
-            {
-                return;
-            }
 
             // Ensure there's an ABR layer for this object
             int layerID = LayerMask.NameToLayer(LayerName);
@@ -342,9 +351,9 @@ namespace IVLab.ABREngine
             }
 
             // Return all previous renderers to pool
-            while (currentGameObject.transform.childCount > 0)
+            while (renderers.transform.childCount > 0)
             {
-                GameObject child = currentGameObject.transform.GetChild(0).gameObject;
+                GameObject child = renderers.transform.GetChild(0).gameObject;
                 GenericObjectPool.Instance.ReturnObjectToPool(child);
             }
 
@@ -360,7 +369,7 @@ namespace IVLab.ABREngine
                 // Parent the glyph renderer to this Data Impression and ensure that it's centered correctly
                 // Unsure why necessary...
                 // See also: PrepareImpression method of DataImpressionGroup class
-                childRenderer.transform.SetParent(currentGameObject.transform, false);
+                childRenderer.transform.SetParent(renderers.transform, false);
                 childRenderer.transform.localPosition = Vector3.zero;
                 childRenderer.transform.localRotation = Quaternion.identity;
 
@@ -395,12 +404,39 @@ namespace IVLab.ABREngine
             // Default to using every transform in the data (re-populate and discard old transforms)
             var SSrenderData = RenderInfo as SimpleGlyphRenderInfo;
 
-            // Go through each child glyph renderer and render it
-            for (int glyphIndex = 0; glyphIndex < currentGameObject.transform.childCount; glyphIndex++)
+            GameObject renderers = currentGameObject.transform.Find("Glyph Renderers").gameObject;
+            if (renderers == null)
+                return;
+
+            GameObject colliders = currentGameObject.transform.Find("Glyph Colliders").gameObject;
+            if (colliders == null)
+                return;
+
+            while (colliders.transform.childCount > 0)
+            {
+                GameObject child = colliders.transform.GetChild(0).gameObject;
+                GenericObjectPool.Instance.ReturnObjectToPool(child);
+            }
+
+/*
+            for (int i = 0; i < renderers.transform.childCount; i++)
+            {
+                GameObject child = renderers.transform.GetChild(i).gameObject;
+                GenericObjectPool.Instance.ReturnObjectToPool(child);
+            }
+*/                            
+            // Rescale the glyphs depending on their current "Glyph Size" input
+            ABRConfig config = ABREngine.Instance.Config;
+            string plateType = this.GetType().GetCustomAttribute<ABRPlateType>().plateType;
+            glyphMeshScale = glyphSize?.Value ?? config.GetInputValueDefault<LengthPrimitive>(plateType, "Glyph Size").Value;
+
+            glyphMeshSizes = new float[renderers.transform.childCount];
+
+            for (int glyphIndex = 0; glyphIndex < renderers.transform.childCount; glyphIndex++)
             {
                 // Exit immediately if the game object or instanced mesh renderer relevant to this
                 // impression do not yet exist
-                InstancedMeshRenderer imr = currentGameObject?.transform.GetChild(glyphIndex).GetComponent<InstancedMeshRenderer>();
+                InstancedMeshRenderer imr = renderers?.transform.GetChild(glyphIndex).GetComponent<InstancedMeshRenderer>();
                 if (imr == null)
                     continue;
 
@@ -424,21 +460,15 @@ namespace IVLab.ABREngine
                 // Create a new MaterialPropertyBlock for this specific glyph
                 MaterialPropertyBlock block = new MaterialPropertyBlock();
 
-                // Rescale the glyphs depending on their current "Glyph Size" input
-                ABRConfig config = ABREngine.Instance.Config;
-                string plateType = this.GetType().GetCustomAttribute<ABRPlateType>().plateType;
-                float curGlyphScale = glyphSize?.Value ??
-                    config.GetInputValueDefault<LengthPrimitive>(plateType, "Glyph Size").Value;
-
                 // However, don't waste time rescaling the glyphs if the scale hasn't actually changed
                 // (If at some point we are no longer scaling all glyphs evenly and equally, this trick
                 // to determine if the scale changed will likely no longer function correctly)
                 float prevGlyphScale = imr.instanceLocalTransforms[0].GetColumn(0).magnitude;
-                if (!Mathf.Approximately(prevGlyphScale, curGlyphScale))
+                if (!Mathf.Approximately(prevGlyphScale, glyphMeshScale))
                 {
                     for (int i = 0; i < imr.instanceLocalTransforms.Length; i++)
                     {
-                        imr.instanceLocalTransforms[i] *= Matrix4x4.Scale(Vector3.one * curGlyphScale / prevGlyphScale);
+                        imr.instanceLocalTransforms[i] *= Matrix4x4.Scale(Vector3.one * glyphMeshScale / prevGlyphScale);
                     }
                 }
 
@@ -454,6 +484,8 @@ namespace IVLab.ABREngine
                     imr.instanceMesh = mesh;
                 }
 
+                glyphMeshSizes[glyphIndex] = imr.instanceMesh.bounds.size.magnitude;
+
                 // Initialize "render info" -- stores scalar values and info on whether
                 // or not glyphs should be rendered
                 Vector4[] glyphRenderInfo = new Vector4[numPoints];
@@ -461,6 +493,7 @@ namespace IVLab.ABREngine
                 // Re-sample based on glyph density, if it has changed
                 float glyphDensityOut = glyphDensity?.Value ??
                     config.GetInputValueDefault<PercentPrimitive>(plateType, "Glyph Density").Value;
+                    
                 glyphDensityOut = Mathf.Clamp01(glyphDensityOut);
                 if (imr.instanceDensity != glyphDensityOut || RenderHints.DataChanged)
                 {
@@ -536,7 +569,11 @@ namespace IVLab.ABREngine
                 imr.instanceDensity = glyphDensityOut;
                 imr.renderInfo = glyphRenderInfo;
 
+#if false
                 // If we're rendering different glyphs based on a scalar variable, filter these now, otherwise leave as-is
+FIXME Not sure whats going on here... this is for using a gradient on value to choose which of several glyphs to use
+Don't see it being used anywhere else though...  I thought we should use  that slot of the renderInfo for a data-driven scale value
+
                 if (glyph?.VisAssetCount > 1 && glyphVariable != null && glyphVariable.IsPartOf(keyData))
                 {
                     GlyphGradient gradient = glyph as GlyphGradient;
@@ -567,15 +604,17 @@ namespace IVLab.ABREngine
                     Vector4[] scalarValuesWithThisGlyph = glyphRenderInfo.Where((sc, i) =>
                     {
                         // Glyph variable is packed at index 1
-                        float scalarValue = glyphRenderInfo[i][1];
+                        float scalarValue = glyphRenderInfo[i][2];
                         float normalizedScalarValue = (scalarValue - glyphVariable.Range.min) / (glyphVariable.Range.max - glyphVariable.Range.min);
                         return filterData(normalizedScalarValue);
                     }).ToArray();
 
+
                     // Re-apply transforms and render info for THIS specific glyph
                     imr.instanceLocalTransforms = transformsWithThisGlyph;
-                    imr.renderInfo = scalarValuesWithThisGlyph;
+                    imr.renderInfo = scalarValuesWithThisyphMeGlyph;
                 }
+#endif
 
                 // Apply changes to the mesh's shader / material
                 block.SetFloat("_ColorDataMin", colorVariableMin);
@@ -597,15 +636,38 @@ namespace IVLab.ABREngine
                     block.SetInt("_UseColorMap", 0);
                 }
 
+
                 imr.block = block;
 
-                imr.cachedInstanceCount = -1;
+                imr.cachedInstanceCount = -1;      
+
+                foreach (int i  in Enumerable.Range(0, positions.Length))
+                {
+                    Vector3 p = positions[i];
+
+                    GameObject colliderObj = GenericObjectPool.Instance.GetObjectFromPool(this.GetType() + "GlyphRenderer", currentGameObject.transform, (go) =>
+                    {
+                        go.name = "Collider_ " + i;
+                    });
+
+                    colliderObj.transform.parent = colliders.transform;
+
+                    SphereCollider sphereCollider = colliderObj.AddComponent<SphereCollider>();
+                    sphereCollider.transform.SetParent(colliders.transform, false);
+                    sphereCollider.radius = glyphMeshSizes[glyphIndex] * glyphMeshScale * 0.2f;  // diameter to radius, then smaller still
+                    sphereCollider.center = p;
+                }
+
             }
         }
 
         public override void UpdateVisibility(EncodedGameObject currentGameObject)
         {
-            foreach (InstancedMeshRenderer imr in currentGameObject?.GetComponentsInChildren<InstancedMeshRenderer>())
+            GameObject renderers = currentGameObject.transform.Find("Glyph Renderers").gameObject;
+            if (renderers == null)
+                return; 
+
+            foreach (InstancedMeshRenderer imr in renderers?.GetComponentsInChildren<InstancedMeshRenderer>())
             {
                 if (imr != null)
                 {
@@ -617,10 +679,15 @@ namespace IVLab.ABREngine
         public override void Cleanup(EncodedGameObject currentGameObject)
         {
             base.Cleanup(currentGameObject);
+
+            GameObject renderers = currentGameObject.transform.Find("Glyph Renderers").gameObject;
+            if (renderers == null)
+                return;
+
             // Return all previous renderers to pool
-            while (currentGameObject.transform.childCount > 0)
+            while (renderers.transform.childCount > 0)
             {
-                GameObject child = currentGameObject.transform.GetChild(0).gameObject;
+                GameObject child = renderers.transform.GetChild(0).gameObject;
                 GenericObjectPool.Instance.ReturnObjectToPool(child);
             }
             perGlyphVisibilityBuffer?.Release();

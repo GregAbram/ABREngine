@@ -323,7 +323,6 @@ namespace IVLab.ABREngine
 
             
             string cfgFile = Path.Combine(abr_root, "abr.json");
-            File.AppendAllText("C:\\Users\\abr\\debug.txt", string.Format("ABRROOT {0}", abr_root));
             
             try
             {

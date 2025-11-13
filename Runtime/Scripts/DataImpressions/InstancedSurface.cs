@@ -217,7 +217,7 @@ namespace IVLab.ABREngine
             {
                 imr = currentGameObject.gameObject.AddComponent<InstancedMeshRenderer>();
             }
-
+    
             // Setup instanced rendering based on computed geometry
             if (SSrenderData == null)
             {

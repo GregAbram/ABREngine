@@ -33,6 +33,7 @@ using UnityEditor;
 
 namespace IVLab.ABREngine
 {
+
     [System.Serializable]
     public class SerializableFloatArray
     {
@@ -216,8 +217,7 @@ namespace IVLab.ABREngine
                 }
 #endif
 
-#if false
-
+#if true
                 Vector3 center = ABREngine.Instance.Config.center;
                 float scale = (float)ABREngine.Instance.Config.scale;
 
@@ -361,6 +361,7 @@ namespace IVLab.ABREngine
             }
         }
 
+
         // This one is used when we are loading a dataset from the file system.
         // The path is relative to the media data folder.
         public static JsonHeader LoadHeaderLocal(string name)
@@ -389,13 +390,15 @@ namespace IVLab.ABREngine
                 for (int i = 0; i < binFiles.Length; i++)
                 {
                     string binFile = binFiles[i];
-                    parts = binFile.Split('/');
-                    string[] s0 = parts[parts.Length - 1].Split('.');
-                    string[] s1 = s0[0].Split('-');
+                    string fname = Path.GetFileNameWithoutExtension(binFile);
 
-                    if (s1.Length > 1)
+                    //parts = binFile.Split('/');
+                    //string[] s0 = parts[parts.Length - 1].Split('.');
+                    //string[] s1 = s0[0].Split('-');
+
+                    if (fname.Length > 1)
                     {
-                        string timestring = s1[s1.Length - 1];
+                        string timestring = RSplit(fname, "-", 1)[1];
                         var c = Regex.Matches(timestring, @"\d?[\.\d?]*");
 
                         if (c.Count > 0)
@@ -760,6 +763,38 @@ namespace IVLab.ABREngine
             // scalarDictionary.TryGetValue(name, out index);
             // return scalarMaxes[index];
             return Vector3.zero;
+        }
+
+
+        /// <summary>
+        /// Splits a string from the right, similar to Python's rsplit.
+        /// </summary>
+        /// <param name="input">The string to split.</param>
+        /// <param name="separator">The separator string.</param>
+        /// <param name="count">Maximum number of splits from the right. If 0 or less, returns the whole string as one element.</param>
+        /// <returns>Array of split parts.</returns>
+        public static string[] RSplit(string input, string separator, int count)
+        {
+            if (input == null)
+                throw new ArgumentNullException(nameof(input));
+            if (separator == null)
+                throw new ArgumentNullException(nameof(separator));
+            if (count <= 0)
+                return new[] { input };
+
+            // Split from the left without limit
+            string[] parts = input.Split(new string[] { separator }, StringSplitOptions.None);
+
+            if (count >= parts.Length)
+                return parts; // No need to merge
+
+            // Merge the left part back so that only 'count' splits happen from the right
+            int mergeCount = parts.Length - count;
+            string[] result = new string[count + 1];
+            result[0] = string.Join(separator, parts, 0, mergeCount);
+            Array.Copy(parts, mergeCount, result, 1, count);
+
+            return result;
         }
     }
 

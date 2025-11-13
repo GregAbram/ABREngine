@@ -308,28 +308,11 @@ namespace IVLab.ABREngine
             if (maxTime == -1 || tMax > maxTime) maxTime = tMax;
         }
 
-        int ttt = 0;
-
         public void SetScaleTime(float v)
         {
-#if false
-            if (v < 0)
-            {
-                ttt = 0;
-                scaleTime = 0;
-                SetCurrentTime(minTime);
-            }
-            else
-            {
-                float t = (minTime + ttt * 4);
-                scaleTime = t / (maxTime - minTime);
-                SetCurrentTime(t);
-                ttt = ttt + 1;
-            }
-#else
+
             scaleTime = v;
             SetCurrentTime(minTime + v * (maxTime - minTime));
-#endif
         }
 
         public float GetScaleTime() { return scaleTime; }
@@ -356,12 +339,12 @@ namespace IVLab.ABREngine
             if (somethingHasChanged)
                 Render();
         }
-    
+
         public float GetCurrentTime()
         {
             return currentTime;
         }
-        
+
         protected override void Awake()
         {
             // Enable depth texture write on main cam so that volume rendering
@@ -387,11 +370,12 @@ namespace IVLab.ABREngine
                 Config = new ABRConfig();
             }
 
+#if false
             // Apply world to local transformation
             gameObject.transform.localPosition = Config.center;
             gameObject.transform.localScale = new Vector3((float)Config.scale, (float)Config.scale, (float)Config.scale);
             gameObject.transform.eulerAngles = Config.rotation;
-
+#endif
             // Initialize the default DataImpressionGroup (where impressions go
             // when they have no dataset) - guid zeroed out
             _defaultGroup = CreateDataImpressionGroup("Default", new Guid());

@@ -353,8 +353,6 @@ namespace IVLab.ABREngine
                 return;
             }
 
-            base.SetupGameObject(currentGameObject);
-
             // Setup mesh renderer and mesh filter
             MeshFilter meshFilter = null;
             MeshRenderer meshRenderer = null;
@@ -367,6 +365,9 @@ namespace IVLab.ABREngine
                 meshRenderer = currentGameObject.gameObject.AddComponent<MeshRenderer>();
             }
 
+            MeshCollider collider = currentGameObject.gameObject.AddComponent<MeshCollider>();
+            collider.sharedMesh = meshFilter.mesh;
+             
             // Ensure we have a layer to work with
             int layerID = LayerMask.NameToLayer(LayerName);
             if (layerID >= 0)
@@ -405,6 +406,11 @@ namespace IVLab.ABREngine
 
                 meshFilter.mesh = mesh;
             }
+
+            collider.enabled = false;
+            collider.enabled = true; 
+            
+            base.SetupGameObject(currentGameObject);
         }
 
         public override void UpdateStyling(EncodedGameObject currentGameObject)

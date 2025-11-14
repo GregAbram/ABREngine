@@ -328,7 +328,6 @@ namespace IVLab.ABREngine
             {
                 StreamReader reader = new StreamReader(cfgFile);
                 string json = reader.ReadToEnd();
-                Debug.Log(json);
                 ExternalConfiguration cfg = new ExternalConfiguration();
                 cfg = JsonUtility.FromJson<ExternalConfiguration>(json);
                 Debug.Log("Using external configuration file: " + cfgFile);
@@ -355,6 +354,7 @@ namespace IVLab.ABREngine
             }
             catch (Exception e)
             {
+                _ = e;
                 Debug.Log("No external config file");
             }
 

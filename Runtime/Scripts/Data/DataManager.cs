@@ -124,7 +124,6 @@ namespace IVLab.ABREngine
         {
             this.appDataPath = datasetPath;
             Directory.CreateDirectory(this.appDataPath);
-            Debug.Log("Dataset Path: " + appDataPath);
 
             // Determine which loaders are available to use
             // First, look in `Media` folder
@@ -252,13 +251,12 @@ namespace IVLab.ABREngine
             {
                 try
                 {
-                    Debug.LogFormat("trying loader {0}", loader.GetType().Name);
                     RawDataset ds = loader.LoadData(dataPath);
                     ds.dataPath = dataPath;
                     
                     if (ds != null)
                     {
-                        Debug.Log($"Dataset `{dataPath} loaded from " + loader.GetType().Name);
+                       // Debug.Log($"Dataset `{dataPath} loaded from " + loader.GetType().Name);
                         return ds;
                     }
                     else

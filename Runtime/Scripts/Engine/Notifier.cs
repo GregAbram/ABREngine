@@ -78,7 +78,7 @@ namespace IVLab.ABREngine
             cts = new CancellationTokenSource();
             try
             {
-                Debug.LogFormat("Trying to connect to state subscriber notifier WebSocket on {0}", this._subscriberWebSocket);
+                //Debug.LogFormat("Trying to connect to state subscriber notifier WebSocket on {0}", this._subscriberWebSocket);
                 this._client = new ClientWebSocket();
 
                 // Inspiration from:
@@ -96,7 +96,6 @@ namespace IVLab.ABREngine
                 if (this._client.State == WebSocketState.Open)
                 {
                     this._running = true;
-                    Debug.Log("State subscriber notifier WebSocket listening");
                     this._receiverThread = new Thread(new ThreadStart(this.Receiver));
                     this._receiverThread.Start();
                     this._senderThread = new Thread(new ThreadStart(this.Sender));
@@ -122,7 +121,6 @@ namespace IVLab.ABREngine
             this._receiverThread?.Join();
             this._senderThread?.Join();
             this._client.Dispose();
-            Debug.Log("Disconnected state subscriber notifier");
         }
 
         public void ForceDisconnect()

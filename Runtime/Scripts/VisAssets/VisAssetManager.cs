@@ -117,7 +117,6 @@ namespace IVLab.ABREngine
         {
             this.appDataPath = visassetPath;
             Directory.CreateDirectory(this.appDataPath);
-            Debug.Log("VisAsset Path: " + appDataPath);
             visAssetLoader = new VisAssetLoader();
 
             // First, try to fetch VisAssets from Local (state) VisAssets

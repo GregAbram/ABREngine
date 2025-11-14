@@ -47,12 +47,10 @@ namespace IVLab.ABREngine
     {
         public RawDataset LoadData(string name)
         {
-            Debug.LogFormat("LoadData  {0}", name);
             RawDataset rds = null;
 
             RawDataset.JsonHeader hdr = RawDataset.LoadHeaderLocal(name);
 
-                
             if (hdr == null)
             {                
                 hdr = RawDataset.LoadHeaderRemote(name);

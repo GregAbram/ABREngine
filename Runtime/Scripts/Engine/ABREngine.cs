@@ -185,9 +185,11 @@ namespace IVLab.ABREngine
         private string previousStateName = "Untitled";
         private ABRStateParser stateParser = null;
 
-        private object _stateLock = new object();
-        private object _stateUpdatingLock = new object();
+    #if false        
+        private object _stateUpdatingLock = new object();        
         private bool stateUpdating = false;
+    #endif
+        private object _stateLock = new object();
 
         private Notifier _notifier;
 
@@ -325,13 +327,16 @@ namespace IVLab.ABREngine
             foreach (var impression in GetAllDataImpressions())
             {                
                 IKeyData ikd = impression.GetKeyData();
-                RawDataset rawdataset;
-                if (Data.TryGetRawDataset(ikd.Path, out rawdataset))
+                if (ikd != null)
                 {
-                    if (rawdataset.info.isTimeVarying && rawdataset.UpdateTimestep())
+                    RawDataset rawdataset;
+                    if (Data.TryGetRawDataset(ikd.Path, out rawdataset))
                     {
-                        somethingHasChanged = true;
-                        impression.RenderHints.DataChanged = true;
+                        if (rawdataset.info.isTimeVarying && rawdataset.UpdateTimestep())
+                        {
+                            somethingHasChanged = true;
+                            impression.RenderHints.DataChanged = true;
+                        }
                     }
                 }
             }
@@ -367,7 +372,8 @@ namespace IVLab.ABREngine
             }
             else
             {
-                Config = new ABRConfig();
+                //Config = new ABRConfig();
+                Config = UnityEngine.ScriptableObject.CreateInstance<ABRConfig>();
             }
 
 #if false
@@ -1183,6 +1189,26 @@ namespace IVLab.ABREngine
         public void LoadState<T>(string stateName)
         where T : IABRStateLoader, new()
         {
+#if true
+            lock (_stateLock)
+            {
+                try
+                {
+                    JObject tempState = stateParser.LoadState<T>(stateName, previouslyLoadedState);
+                    previousStateName = stateName;
+                    previouslyLoadedState = tempState;
+                    Render();
+                    if (OnStateChanged != null)
+                    {
+                        OnStateChanged(previouslyLoadedState);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
+            }
+#else
             lock (_stateUpdatingLock)
             {
                 stateUpdating = true;
@@ -1209,7 +1235,9 @@ namespace IVLab.ABREngine
             {
                 Debug.LogError(e);
             }
+#endif
         }
+
 
         /// <summary>
         /// Save a state from the ABR Unity scene back to a particular JSON destination.

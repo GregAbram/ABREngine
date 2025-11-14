@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 using IVLab.Utilities;
+using Codice.CM.Common;
 
 namespace IVLab.ABREngine
 {
@@ -136,19 +137,22 @@ namespace IVLab.ABREngine
                 impressionGameObject.name = impression.GetType().ToString();
 
                 KeyData kd = impression.GetKeyData();
-                string path = kd.Path;
-                string name = path.Split('/')[3];
-                Debug.Log(name);
-
-                var types = typeof(object).Assembly.GetTypes();
-                foreach (var t in types)
+                if (kd != null)
                 {
-                    string a = t.FullName.Split('.')[0];
-                    if (a != "System")
-                        Debug.Log(t.FullName);
-                }
 
-                foreach (var i in ABREngine.Instance.hitActions)
+                    string path = kd.Path;
+                    string name = path.Split('/')[3];
+
+    #if false
+                    var types = typeof(object).Assembly.GetTypes();
+                    foreach (var t in types)
+                    {
+                        string a = t.FullName.Split('.')[0];
+                        if (a != "System")
+                            Debug.Log(t.FullName);
+                    }
+    #endif
+                    foreach (var i in ABREngine.Instance.hitActions)
                     {
                         if (i.name == name)
                         {
@@ -157,6 +161,7 @@ namespace IVLab.ABREngine
                                 impressionGameObject.AddComponent(t);
                         }
                     }
+                }
 
                 EncodedGameObject ego = impressionGameObject.AddComponent<EncodedGameObject>();
                 gameObjectMapping[impression.Uuid] = ego;

@@ -79,7 +79,8 @@ namespace IVLab.ABREngine
             HttpResponseMessage stateResponse = ABREngine.httpClient.GetAsync(url).Result;
             stateResponse.EnsureSuccessStatusCode();
             string fullStateJson = stateResponse.Content.ReadAsStringAsync().Result;
-            return JObject.Parse(fullStateJson)["state"].ToObject<JObject>();
+            var r = JObject.Parse(fullStateJson)["state"].ToObject<JObject>();
+            return r;
         }
 
         public void SaveState(string name, string serializedState)

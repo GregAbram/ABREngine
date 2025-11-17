@@ -367,6 +367,7 @@ namespace IVLab.ABREngine
 
             MeshCollider collider = currentGameObject.gameObject.AddComponent<MeshCollider>();
             collider.sharedMesh = meshFilter.mesh;
+            collider.name = "ABR Surface";
              
             // Ensure we have a layer to work with
             int layerID = LayerMask.NameToLayer(LayerName);
@@ -378,7 +379,7 @@ namespace IVLab.ABREngine
             {
                 Debug.LogWarningFormat("Could not find layer {0} for SimpleSurfaceDataImpression", LayerName);
             }
-            currentGameObject.name = this + " surface Mesh";
+            currentGameObject.name = "ABR Surface";
 
             // Populate surface mesh from calculated geometry
             var SSrenderData = RenderInfo as SimpleSurfaceRenderInfo;

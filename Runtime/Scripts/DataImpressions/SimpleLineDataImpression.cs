@@ -444,6 +444,20 @@ namespace IVLab.ABREngine
 
             base.SetupGameObject(currentGameObject);
 
+            GameObject renderers = currentGameObject.transform.Find("Line Renderers")?.gameObject;
+            if (renderers == null)
+            {
+                renderers = new GameObject("Line Renderers");
+                renderers.transform.SetParent(currentGameObject.transform, false);
+            }
+
+            GameObject colliders = currentGameObject.transform.Find("Line Colliders")?.gameObject;
+            if (colliders == null)
+            {
+                colliders = new GameObject("Line Colliders");
+                colliders.transform.SetParent(currentGameObject.transform, false);
+            }
+            
             // Find ABR Layer
             int layerID = LayerMask.NameToLayer(LayerName);
             if (layerID < 0)
@@ -453,28 +467,29 @@ namespace IVLab.ABREngine
 
             // Create a new GameObject for each line in the data, and return any unused ones to the pool
             int numLines = lineResources?.indices?.Length ?? 0;
-            while (currentGameObject.transform.childCount < numLines)
+            while (renderers.transform.childCount < numLines)
             {
                 GameObject renderObject = GenericObjectPool.Instance.GetObjectFromPool(this.GetType().Name + " meshRenderer", currentGameObject.transform, go =>
                 {
                     go.name = "Line Render Object";
                 });
-                renderObject.transform.SetParent(currentGameObject.transform, false);
+
+                renderObject.transform.SetParent(renderers.transform, false);
                 renderObject.transform.localPosition = Vector3.zero;
                 renderObject.transform.localScale = Vector3.one;
                 renderObject.transform.localRotation = Quaternion.identity;
             }
 
-            while (currentGameObject.transform.childCount > numLines)
+            for (int i = renderers.transform.childCount - 1; i >= numLines; i--)
             {
-                GameObject child = currentGameObject.transform.GetChild(0).gameObject;
+                GameObject child = currentGameObject.transform.GetChild(i).gameObject;
                 GenericObjectPool.Instance.ReturnObjectToPool(child);
             }
 
             // Create mesh filters and renderers for each line
             for (int i = 0; i < numLines; i++)
             {
-                var renderObject = currentGameObject.transform.GetChild(i).gameObject;
+                var renderObject = renderers.transform.GetChild(i).gameObject;
                 MeshFilter meshFilter = null;
                 MeshRenderer meshRenderer = null;
                 if (!renderObject.TryGetComponent<MeshFilter>(out meshFilter))
@@ -509,7 +524,25 @@ namespace IVLab.ABREngine
                 mesh.UploadMeshData(false);
 
                 meshFilter.mesh = mesh;
-                meshRenderer.material = ImpressionMaterials[0];
+                meshRenderer.material = ImpressionMaterials[0];            
+                
+                GameObject colliderObject = GenericObjectPool.Instance.GetObjectFromPool(this.GetType().Name + " meshCollider", currentGameObject.transform, go =>
+                {
+                    go.name = "ABR Line " + i;
+                });
+
+                colliderObject.transform.SetParent(renderers.transform, false);
+                colliderObject.transform.localPosition = Vector3.zero;
+                colliderObject.transform.localScale = Vector3.one;
+                colliderObject.transform.localRotation = Quaternion.identity;
+                
+                MeshCollider meshCollider = null;
+                if (!colliderObject.TryGetComponent<MeshRenderer>(out meshRenderer))
+                {
+                    meshCollider = colliderObject.AddComponent<MeshCollider>();
+                }
+
+                meshCollider.sharedMesh = mesh;
             }
         }
 
@@ -523,6 +556,14 @@ namespace IVLab.ABREngine
             {
                 return;
             }
+
+            GameObject renderers = currentGameObject.transform.Find("Line Renderers").gameObject;
+            if (renderers == null)
+                return;
+
+            GameObject colliders = currentGameObject.transform.Find("Line Colliders").gameObject;
+            if (colliders == null)
+                return;
 
             // Load the lines' dataset in order to obtain some key information about them 
             // (how many lines there are, how many points they are made out of, etc.)
@@ -574,7 +615,7 @@ namespace IVLab.ABREngine
             for (int i = 0; i < numLines; i++)
             {
                 // Get the current line renderer gameobject
-                GameObject renderObject = currentGameObject.transform.GetChild(i).gameObject;
+                GameObject renderObject = renderers.transform.GetChild(i).gameObject;
                 // Obtain its mesh renderer and filter components
                 MeshFilter meshFilter = renderObject?.GetComponent<MeshFilter>();
                 MeshRenderer meshRenderer = renderObject?.GetComponent<MeshRenderer>();
@@ -694,12 +735,15 @@ namespace IVLab.ABREngine
         public override void UpdateVisibility(EncodedGameObject currentGameObject)
         {
             if (currentGameObject == null)
-            {
                 return;
-            }
-            for (int i = 0; i < currentGameObject.transform.childCount; i++)
+
+            GameObject renderers = currentGameObject.transform.Find("Line Renderers").gameObject;
+            if (renderers == null)
+                return;
+            
+            for (int i = 0; i < renderers.transform.childCount; i++)
             {
-                MeshRenderer mr = currentGameObject.transform.GetChild(i).GetComponent<MeshRenderer>();
+                MeshRenderer mr = renderers.transform.GetChild(i).GetComponent<MeshRenderer>();
                 if (mr !=  null)
                 {
                     if (RenderHints.Visible)

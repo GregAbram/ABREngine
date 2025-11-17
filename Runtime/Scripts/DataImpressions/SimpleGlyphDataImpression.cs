@@ -647,7 +647,7 @@ Don't see it being used anywhere else though...  I thought we should use  that s
 
                     GameObject colliderObj = GenericObjectPool.Instance.GetObjectFromPool(this.GetType() + "GlyphRenderer", currentGameObject.transform, (go) =>
                     {
-                        go.name = "Collider_ " + i;
+                        go.name = "ABR Glyph " + i;
                     });
 
                     colliderObj.transform.parent = colliders.transform;

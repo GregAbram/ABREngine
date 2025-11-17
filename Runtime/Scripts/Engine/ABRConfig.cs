@@ -36,7 +36,7 @@ namespace IVLab.ABREngine
     /// engine startup, a copy is instantiated for use at runtime.
     /// </summary>
     /// 
-    /// [CreateAssetMenu(fileName = "ABRConfig", menuName = "ABR/ABR Configuration")]
+    [CreateAssetMenu(fileName = "ABRConfig", menuName = "ABR/ABR Configuration")]
     public class ABRConfig : ScriptableObject
     { 
         /// Read config stuff in from a JSON file <summary>
@@ -58,22 +58,19 @@ namespace IVLab.ABREngine
             public int port;
         };
 
-        public class ExternalDataContainer
-        {
-            public jvector center;
-            public jvector extent;
-        }
-
         [System.Serializable]
         public class ExternalConfiguration
         {
             public string mediaDirectory;
             public string serverURL;     
-            public bool useAutoDataContainer;   
+           // public bool useAutoDataContainer;   
             public jvector center;
             public jvector rotation;
             public double scale;
-            public ExternalDataContainer container;
+            public jvector defaultColor;
+            public jvector hiliteColor;
+            public jvector nanColor;
+           // public ExternalDataContainer container;
             public RemoteDataSource[] remotes;
         };
 
@@ -109,6 +106,9 @@ namespace IVLab.ABREngine
 
         [Tooltip("Default color for geometries that have not had a colormap applied yet")]
         public Color defaultColor;
+
+        [Tooltip("Color for highlighted geometries")]
+        public Color hiliteColor;
 
         [Tooltip("Default color for NaN values")]
         public Color defaultNanColor;
@@ -147,13 +147,6 @@ namespace IVLab.ABREngine
         [Tooltip("Port to listen for data connections (e.g. from ParaView on). A port `0` is assumed to mean no connection.")]
         public int dataListenerPort = 1900;
 
-        [Header("Data Container Options")]
-        /// <summary>
-        /// Controls whether or not the <see cref="dataContainer"/> is used.
-        /// </summary>
-        [Tooltip("Use the automatic data container, or just import coordinates as-is")]
-        public bool useAutoDataContainer;
-
         public RemoteDataSource[] remotes;
 
         public double scale;
@@ -163,8 +156,8 @@ namespace IVLab.ABREngine
         /// <summary>
         ///     Default bounds for datasets when showing (in Unity world coordinates)
         /// </summary>
-        [Tooltip("Unity world-space container to automatically 'squish' all data into to avoid overflowing Unity coordinates")]
-        public Bounds dataContainer = new Bounds(new Vector3(0, 0, 0), new Vector3(2, 2, 2));
+        //[Tooltip("Unity world-space container to automatically 'squish' all data into to avoid overflowing Unity coordinates")]
+        //public Bounds dataContainer = new Bounds(new Vector3(0, 0, 0), new Vector3(2, 2, 2));
 
         /// <summary>
         /// Override transform matrices for specific data impression groups.
@@ -201,12 +194,14 @@ namespace IVLab.ABREngine
             mediaPath = Application.persistentDataPath;
             serverUrl = "";
             loadStateOnStart = "";
-            dataContainer = new Bounds(Vector3.zero, Vector3.one * 2.0f);
+           // dataContainer = new Bounds(Vector3.zero, Vector3.one * 2.0f);
 
             defaultGlyph = Resources.Load<GameObject>("DefaultSphere");
             defaultGlyph.SetActive(false);
             defaultColor = Color.white;
             defaultNanColor = Color.yellow;
+            hiliteColor = Color.red;
+
             defaultNanTexture = null;
             defaultNanLine = null;
 
@@ -217,12 +212,12 @@ namespace IVLab.ABREngine
             overrideGroupToDataMatrices = new List<GroupToDataMatrixOverrideFields>();
         }
 
-        void Awake()
+
+// NOTE: tried doing this in the creator but the initialization 
+// with the values from the asset file happens after the ctor.
+
+        public void Setup()
         {
-            // Debug.Log("ABR Config Loaded");
-            defaultGlyph = Resources.Load<GameObject>("DefaultSphere");
-            defaultGlyph.SetActive(false);
-            
             // Check for a backed up schema
             string backupSchemaDir = Path.Combine(Application.streamingAssetsPath, "schemas");
             string backupSchema = null;
@@ -321,7 +316,6 @@ namespace IVLab.ABREngine
                 abr_root = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             }
 
-            
             string cfgFile = Path.Combine(abr_root, "abr.json");
             
             try
@@ -329,12 +323,23 @@ namespace IVLab.ABREngine
                 StreamReader reader = new StreamReader(cfgFile);
                 string json = reader.ReadToEnd();
                 ExternalConfiguration cfg = new ExternalConfiguration();
-                cfg = JsonUtility.FromJson<ExternalConfiguration>(json);
+
+                //cfg.defaultColor = new jvector() { x = 1.0f, y = 1.0f, z = 1.0f };
+                
+                cfg.defaultColor = new jvector() { x = defaultColor.r, y = defaultColor.g, z = defaultColor.b };
+                cfg.hiliteColor = new jvector() { x = hiliteColor.r, y = hiliteColor.g, z = hiliteColor.b };
+                cfg.nanColor = new jvector() { x = defaultNanColor.r, y = defaultNanColor.g, z = defaultNanColor.b };   
+                
+                JsonConvert.PopulateObject(json, cfg);
+
                 Debug.Log("Using external configuration file: " + cfgFile);
 
                 serverUrl = cfg.serverURL;
                 mediaPath = cfg.mediaDirectory;
-
+                defaultColor = new Color(cfg.defaultColor.x, cfg.defaultColor.y, cfg.defaultColor.z)    ;
+                hiliteColor = new Color(cfg.hiliteColor.x, cfg.hiliteColor.y, cfg.hiliteColor.z);
+                defaultNanColor = new Color(cfg.nanColor.x, cfg.nanColor.y, cfg.nanColor.z);
+                
                 if (!System.IO.Path.IsPathRooted(mediaPath))
                 {
                     mediaPath = Path.Combine(abr_root, mediaPath);
@@ -344,13 +349,6 @@ namespace IVLab.ABREngine
                 center = new Vector3(cfg.center.x, cfg.center.y, cfg.center.z);
                 rotation = new Vector3(cfg.rotation.x, cfg.rotation.y, cfg.rotation.z);
                 scale = cfg.scale;
-
-                useAutoDataContainer = cfg.useAutoDataContainer;
-                if (cfg.container != null)
-                {
-                    dataContainer.center = new Vector3(cfg.container.center.x, cfg.container.center.y, cfg.container.center.z);
-                    dataContainer.extents = new Vector3(cfg.container.extent.x, cfg.container.extent.y, cfg.container.extent.z);
-                }
             }
             catch (Exception e)
             {

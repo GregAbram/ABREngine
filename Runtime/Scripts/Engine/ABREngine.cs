@@ -167,16 +167,11 @@ namespace IVLab.ABREngine
     public class ABREngine : Singleton<ABREngine>
     {
         private Dictionary<Guid, DataImpressionGroup> dataImpressionGroups = new Dictionary<Guid, DataImpressionGroup>();
-
-        [Serializable]
-        public struct HitAction
-        {
-            public string name;
-            public string actionClassName;
-        }
-
-        public HitAction[] hitActions;
         
+        /// <summary>
+        /// Provides access to all of the ABRConfig options that were loaded in at startup
+        /// </summary>
+        public ABRConfig Config;
         /// <summary>
         /// JSON representation of the state that has been previously loaded into ABR
         /// </summary>
@@ -185,16 +180,9 @@ namespace IVLab.ABREngine
         private string previousStateName = "Untitled";
         private ABRStateParser stateParser = null;
 
-    #if false        
-        private object _stateUpdatingLock = new object();        
-        private bool stateUpdating = false;
-    #endif
         private object _stateLock = new object();
 
         private Notifier _notifier;
-
-        [SerializeField]
-        public ABRConfig configPrototype;
 
         /// <summary>
         /// System-wide manager for VisAssets (visual elements used in the visualization)
@@ -277,16 +265,14 @@ namespace IVLab.ABREngine
                     return Path.Combine(persistentDataPath, "media");
                 }
             }
-        }
+        } 
+        
 
         /// <summary>
         /// Cached, readonly version of the ABREngine transform so it can be accessed in a non-main thread
         /// </summary>
         public Transform ABRTransform { get; private set; }
-        /// <summary>
-        /// Provides access to all of the ABRConfig options that were loaded in at startup
-        /// </summary>
-        public ABRConfig Config { get; private set; }
+
 
         /// <summary>
         /// Client for internal application usage to make web requests.
@@ -352,6 +338,8 @@ namespace IVLab.ABREngine
 
         protected override void Awake()
         {
+            Config.Setup();
+
             // Enable depth texture write on main cam so that volume rendering
             // functions correctly
             Camera.main.depthTextureMode = DepthTextureMode.Depth;
@@ -365,23 +353,7 @@ namespace IVLab.ABREngine
             // Initialize state parser
             stateParser = new ABRStateParser();
 
-            // Initialize the configuration from ABRConfig.json
-            if (configPrototype != null)
-            {
-                Config = Instantiate(configPrototype);
-            }
-            else
-            {
-                //Config = new ABRConfig();
-                Config = UnityEngine.ScriptableObject.CreateInstance<ABRConfig>();
-            }
 
-#if false
-            // Apply world to local transformation
-            gameObject.transform.localPosition = Config.center;
-            gameObject.transform.localScale = new Vector3((float)Config.scale, (float)Config.scale, (float)Config.scale);
-            gameObject.transform.eulerAngles = Config.rotation;
-#endif
             // Initialize the default DataImpressionGroup (where impressions go
             // when they have no dataset) - guid zeroed out
             _defaultGroup = CreateDataImpressionGroup("Default", new Guid());
@@ -713,7 +685,7 @@ namespace IVLab.ABREngine
         /// </returns>
         public DataImpressionGroup CreateDataImpressionGroup(string name)
         {
-            return CreateDataImpressionGroup(name, Guid.NewGuid(), Config.dataContainer, Vector3.zero, Quaternion.identity);
+            return CreateDataImpressionGroup(name, Guid.NewGuid(), Vector3.zero, Quaternion.identity);
         }
 
         /// <summary>
@@ -723,12 +695,12 @@ namespace IVLab.ABREngine
         /// </summary>
         /// <param name="name">Name of the new data impression group that will be created</param>
         /// <param name="position">Where to place the data impression in space</param>
-        /// <returns>
+        /// <returns> 
         /// The group that has been added.
         /// </returns>
         public DataImpressionGroup CreateDataImpressionGroup(string name, Vector3 position)
         {
-            return CreateDataImpressionGroup(name, Guid.NewGuid(), Config.dataContainer, position, Quaternion.identity);
+            return CreateDataImpressionGroup(name, Guid.NewGuid(), position, Quaternion.identity);
         }
 
         /// <summary>
@@ -744,7 +716,9 @@ namespace IVLab.ABREngine
         /// </returns>
         public DataImpressionGroup CreateDataImpressionGroup(string name, Guid uuid)
         {
-            return CreateDataImpressionGroup(name, uuid, Config.dataContainer, Vector3.zero, Quaternion.identity);
+            ABRConfig config = ABREngine.Instance.Config;
+
+            return CreateDataImpressionGroup(name, uuid, Vector3.zero, Quaternion.identity);
         }
 
 
@@ -759,9 +733,9 @@ namespace IVLab.ABREngine
         /// <returns>
         /// The group that has been added.
         /// </returns>
-        public DataImpressionGroup CreateDataImpressionGroup(string name, Guid uuid, Bounds bounds, Vector3 position, Quaternion rotation)
+        public DataImpressionGroup CreateDataImpressionGroup(string name, Guid uuid, Vector3 position, Quaternion rotation)
         {
-            DataImpressionGroup group = new DataImpressionGroup(name, uuid, bounds, position, rotation, this.transform);
+            DataImpressionGroup group = new DataImpressionGroup(name, uuid, position, rotation, this.transform);
             dataImpressionGroups[group.Uuid] = group;
             return group;
         }

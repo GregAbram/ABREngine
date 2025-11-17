@@ -545,7 +545,6 @@ namespace IVLab.ABREngine
                                     g = ABREngine.Instance.CreateDataImpressionGroup(
                                         group.Value.name,
                                         group.Value.uuid,
-                                        group.Value.containerBounds,
                                         group.Value.rootPosition,
                                         group.Value.rootRotation
                                     );

@@ -79,15 +79,13 @@ namespace IVLab.ABREngine
         private Dictionary<Guid, IDataImpression> _impressions = new Dictionary<Guid, IDataImpression>();
         private Dictionary<Guid, EncodedGameObject> gameObjectMapping = new Dictionary<Guid, EncodedGameObject>();
 
-        internal DataImpressionGroup(string name, Bounds bounds, Transform parent)
-            : this(name, Guid.NewGuid(), bounds, Vector3.zero, Quaternion.identity, parent) { }
+        internal DataImpressionGroup(string name, Transform parent)
+            : this(name, Guid.NewGuid(), Vector3.zero, Quaternion.identity, parent) { }
 
-        internal DataImpressionGroup(string name, Guid uuid, Bounds bounds, Vector3 position, Quaternion rotation, Transform parent)
+        internal DataImpressionGroup(string name, Guid uuid, Vector3 position, Quaternion rotation, Transform parent)
         {
             Uuid = uuid;
             Name = name;
-
-            GroupContainer = bounds;
 
             GroupRoot = new GameObject("DataImpressionGroup " + name);
             GroupRoot.transform.SetParent(parent, false);
@@ -363,6 +361,10 @@ namespace IVLab.ABREngine
         /// </returns>
         public bool RecalculateBounds()
         {
+            GroupToDataMatrix = Matrix4x4.identity;
+            return false;
+#if false
+
             // If user specified to not use data container, skip the rest and
             // don't auto-calculate new bounds
             if (!ABREngine.Instance.Config.useAutoDataContainer)
@@ -435,7 +437,8 @@ namespace IVLab.ABREngine
             }
 
             return Mathf.Abs(currentBoundsSize - GroupBounds.size.magnitude) > float.Epsilon;
-        }
+#endif        
+}
 
         /// <summary>
         /// Render every data impression inside this data impression group. Three levels of "update" are provided for each data impression (see <see cref="RenderHints"/> for more information):

@@ -100,7 +100,7 @@ namespace IVLab.ABREngine
             return keyDataObjects.Values.ToArray();
         }
 
-        public Dataset(string dataPath, Bounds bounds, Transform parent)
+        public Dataset(string dataPath, Transform parent)
         {
             Path = dataPath;
         }

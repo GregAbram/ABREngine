@@ -342,8 +342,7 @@ namespace IVLab.ABREngine
                 Dataset dataset;
                 if (!TryGetDataset(datasetPath, out dataset))
                 {
-                    Bounds dataContainer = ABREngine.Instance.Config.dataContainer;
-                    dataset = new Dataset(datasetPath, dataContainer, ABREngine.Instance.ABRTransform);
+                    dataset = new Dataset(datasetPath, ABREngine.Instance.ABRTransform);
                 }
 
                 datasets[datasetPath] = dataset;

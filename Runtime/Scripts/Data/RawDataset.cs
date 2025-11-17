@@ -217,21 +217,19 @@ namespace IVLab.ABREngine
                 }
 #endif
 
-#if true
                 Vector3 center = ABREngine.Instance.Config.center;
                 float scale = (float)ABREngine.Instance.Config.scale;
 
-                if (!ABREngine.Instance.Config.useAutoDataContainer)
-                    for (int i = 0; i < 3 * bdh.num_points;)
-                    {
-                        vertices[i] = (vertices[i] - center.x) * scale;
-                        i++;
-                        vertices[i] = (vertices[i] - center.y) * scale;
-                        i++;
-                        vertices[i] = (vertices[i] - center.z) * scale;
-                        i++;
-                    }
-#endif
+                for (int i = 0; i < 3 * bdh.num_points;)
+                {
+                    vertices[i] = (vertices[i] - center.x) * scale;
+                    i++;
+                    vertices[i] = (vertices[i] - center.y) * scale;
+                    i++;
+                    vertices[i] = (vertices[i] - center.z) * scale;
+                    i++;
+                }
+
                 index_array = new int[bdh.num_cell_indices];
                 nbytes = bdh.num_cell_indices * sizeof(int);
                 Buffer.BlockCopy(bytes, offset, index_array, 0, nbytes);

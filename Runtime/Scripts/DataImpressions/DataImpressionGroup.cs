@@ -135,34 +135,6 @@ namespace IVLab.ABREngine
                 GameObject impressionGameObject = new GameObject();
                 impressionGameObject.transform.parent = GroupRoot.transform;
                 impressionGameObject.name = impression.GetType().ToString();
-
-                KeyData kd = impression.GetKeyData();
-                if (kd != null)
-                {
-
-                    string path = kd.Path;
-                    string name = path.Split('/')[3];
-
-    #if false
-                    var types = typeof(object).Assembly.GetTypes();
-                    foreach (var t in types)
-                    {
-                        string a = t.FullName.Split('.')[0];
-                        if (a != "System")
-                            Debug.Log(t.FullName);
-                    }
-    #endif
-                    foreach (var i in ABREngine.Instance.hitActions)
-                    {
-                        if (i.name == name)
-                        {
-                            Type t = Type.GetType(i.actionClassName);
-                            if (t != null && t.IsSubclassOf(typeof(Component)))
-                                impressionGameObject.AddComponent(t);
-                        }
-                    }
-                }
-
                 EncodedGameObject ego = impressionGameObject.AddComponent<EncodedGameObject>();
                 gameObjectMapping[impression.Uuid] = ego;
             }

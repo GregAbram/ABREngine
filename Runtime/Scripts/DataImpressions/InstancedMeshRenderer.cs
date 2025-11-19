@@ -171,11 +171,12 @@ namespace IVLab.ABREngine
             cachedSubMeshIndex = subMeshIndex;
         }
 
-        ~InstancedMeshRenderer()
+        void OnDestroy()
         {
             renderInfoBuffer?.Release();
             transformBuffer?.Release();
             transformBufferInverse?.Release();
+            argsBuffer?.Release();
         }
     }
 }

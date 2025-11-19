@@ -415,10 +415,6 @@ namespace IVLab.ABREngine
             if (renderers == null)
                 return;
 
-            GameObject colliders = currentGameObject.transform.Find("Glyph Colliders").gameObject;
-            if (colliders == null)
-                return;
-                          
             // Rescale the glyphs depending on their current "Glyph Size" input
             ABRConfig config = ABREngine.Instance.Config;
             string plateType = this.GetType().GetCustomAttribute<ABRPlateType>().plateType;
@@ -584,53 +580,40 @@ namespace IVLab.ABREngine
                 imr.block = block;
 
                 imr.cachedInstanceCount = -1;      
-
             }
+
+            GameObject colliders = currentGameObject.transform.Find("Glyph Colliders").gameObject;
+            if (colliders != null)
+            {
+                colliders.name = "colliders being deleted";
+                UnityEngine.Object.Destroy(colliders);
+            }          
+            
+            colliders = new GameObject("Glyph Colliders");
+            colliders.transform.SetParent(currentGameObject.transform, false);
+
+            for (int i = 0; i < positions.Length; i++)
+            {
+                Vector3 p = positions[i];
+                GameObject colliderObj = new GameObject();
+                colliderObj.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                colliderObj.transform.localScale = Vector3.one;
+                colliderObj.name = "ABR Glyph Collider " + i;
+                                    
+                SphereCollider collider = colliderObj.AddComponent<SphereCollider>();
+
+                collider.radius = glyphMeshSizes[0] * glyphMeshScale * 0.2f;  // diameter to radius, then smaller still
+                collider.center = p;
+                colliderObj.transform.SetParent(colliders.transform, false);
+            };
+
+            return;      
         }
 
         public override void UpdateVisibility(EncodedGameObject currentGameObject)
         {
-            GameObject colliders = currentGameObject.transform.Find("Glyph Colliders").gameObject;
-            if (colliders == null)
-                return;
-
-            if (RenderHints.Visible)
-            {
-                // I don't know why, but making the impression inactive and then active again
-                // changes the transforms on the colliders.  So when we make the impressing inactive 
-                // we destroy all the colliders, and when we make it active again we recreate them.
-
-                if (colliders.transform.childCount == 0)
-                {
-                    for (int i = 0; i < positions.Length; i++)
-                    {
-                        Vector3 p = positions[i];
-                        GameObject colliderObj = new GameObject();
-                        colliderObj.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-                        colliderObj.transform.localScale = Vector3.one;
-                        colliderObj.name = "ABR Glyph Collider " + i;
-                                            
-                        SphereCollider collider = colliderObj.AddComponent<SphereCollider>();
-        
-                        collider.radius = glyphMeshSizes[0] * glyphMeshScale * 0.2f;  // diameter to radius, then smaller still
-                        collider.center = p;
-                        colliderObj.transform.SetParent(colliders.transform, false);
-                    };
-                }
-            }
-            else
-            {
-                for (int i = colliders.transform.childCount - 1; i >= 0; i--)
-                {
-                    var child = colliders.transform.GetChild(i).gameObject;
-                    UnityEngine.Object.Destroy(child);
-                }   
-            }
-                
             currentGameObject.gameObject.SetActive(RenderHints.Visible);
-
             return;
-
         }
 
         public override void Cleanup(EncodedGameObject currentGameObject)

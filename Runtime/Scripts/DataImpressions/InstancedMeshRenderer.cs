@@ -20,6 +20,7 @@
 using UnityEngine;
 using System.Collections;
 using UnityEngine.Rendering;
+using Codice.CM.Client.Differences.Graphic;
 
 namespace IVLab.ABREngine
 {
@@ -52,22 +53,13 @@ namespace IVLab.ABREngine
         private ComputeBuffer transformBufferInverse;
 
 
-        private ComputeBuffer argsBuffer;
+        private ComputeBuffer argsBuffer = null;
         private uint[] args = new uint[5] { 0, 0, 0, 0, 0 };
         bool invalid = true;
 
         public MaterialPropertyBlock block;
 
         public bool useInstanced = true;
-
-        void OnEnable()
-        {
-            argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
-            UpdateBuffers();
-
-            block = new MaterialPropertyBlock();
-
-        }
 
         // TODO Need to fix this sometime. Late Update causes glyphs to not appear on Screenshot camera, while
         // Update can result in one-frame delays in getting object transform. 
@@ -76,9 +68,18 @@ namespace IVLab.ABREngine
         void Update()
         {
             if (argsBuffer == null) cachedInstanceCount = -1;
+
             // Update starting position buffer
             if (cachedInstanceCount != instanceCount || cachedSubMeshIndex != subMeshIndex)
+            {
+                if (argsBuffer == null)
+                    argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
+
+                if (block == null)
+                    block = new MaterialPropertyBlock();
                 UpdateBuffers();
+            }
+
             if (invalid) return;
             //// Pad input
             //if (Input.GetAxisRaw("Horizontal") != 0.0f)
@@ -170,25 +171,6 @@ namespace IVLab.ABREngine
 
             cachedInstanceCount = instanceCount;
             cachedSubMeshIndex = subMeshIndex;
-        }
-
-        void OnDisable()
-        {
-            if (renderInfoBuffer != null)
-                renderInfoBuffer.Release();
-            renderInfoBuffer = null;
-
-            if (transformBuffer != null)
-                transformBuffer.Release();
-            transformBuffer = null;
-
-            if (transformBufferInverse != null)
-                transformBufferInverse.Release();
-            transformBufferInverse = null;
-
-            if (argsBuffer != null)
-                argsBuffer.Release();
-            argsBuffer = null;
         }
     }
 }

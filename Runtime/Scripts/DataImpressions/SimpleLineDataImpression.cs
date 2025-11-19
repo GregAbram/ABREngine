@@ -23,8 +23,6 @@ using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
-using IVLab.Utilities;
-
 namespace IVLab.ABREngine
 {
     public class SimpleLineRenderInfo : IDataImpressionRenderInfo
@@ -445,19 +443,25 @@ namespace IVLab.ABREngine
             base.SetupGameObject(currentGameObject);
 
             GameObject renderers = currentGameObject.transform.Find("Line Renderers")?.gameObject;
-            if (renderers == null)
+            if (renderers != null)
             {
-                renderers = new GameObject("Line Renderers");
-                renderers.transform.SetParent(currentGameObject.transform, false);
+                renderers.name = "renderers being deleted";
+                UnityEngine.Object.Destroy(renderers);
             }
 
+            renderers = new GameObject("Line Renderers");
+            renderers.transform.SetParent(currentGameObject.transform, false);
+
             GameObject colliders = currentGameObject.transform.Find("Line Colliders")?.gameObject;
-            if (colliders == null)
+            if (colliders != null)
             {
-                colliders = new GameObject("Line Colliders");
-                colliders.transform.SetParent(currentGameObject.transform, false);
+                colliders.name = "colliders being deleted";
+                UnityEngine.Object.Destroy(colliders);
             }
-            
+
+            colliders = new GameObject("Line Colliders");
+            colliders.transform.SetParent(currentGameObject.transform, false);
+
             // Find ABR Layer
             int layerID = LayerMask.NameToLayer(LayerName);
             if (layerID < 0)
@@ -465,31 +469,27 @@ namespace IVLab.ABREngine
                 Debug.LogWarningFormat("Could not find layer {0} for SimpleLineDataImpression", LayerName);
             }
 
+            for (int i = renderers.transform.childCount - 1; i >= 0; i--)
+            {
+                GameObject.Destroy(renderers.transform.GetChild(i).gameObject);
+            }
+
+            for (int i = colliders.transform.childCount - 1; i >= 0; i--)
+            {
+                GameObject.Destroy(colliders.transform.GetChild(i).gameObject);
+            }
+
             // Create a new GameObject for each line in the data, and return any unused ones to the pool
             int numLines = lineResources?.indices?.Length ?? 0;
-            while (renderers.transform.childCount < numLines)
+            for (int i = 0; i < numLines; i++)
             {
-                GameObject renderObject = GenericObjectPool.Instance.GetObjectFromPool(this.GetType().Name + " meshRenderer", currentGameObject.transform, go =>
-                {
-                    go.name = "Line Render Object";
-                });
-
+                GameObject renderObject = new GameObject();
+                renderObject.name =  "Line Render Object "  + i;
                 renderObject.transform.SetParent(renderers.transform, false);
                 renderObject.transform.localPosition = Vector3.zero;
                 renderObject.transform.localScale = Vector3.one;
                 renderObject.transform.localRotation = Quaternion.identity;
-            }
 
-            for (int i = renderers.transform.childCount - 1; i >= numLines; i--)
-            {
-                GameObject child = currentGameObject.transform.GetChild(i).gameObject;
-                GenericObjectPool.Instance.ReturnObjectToPool(child);
-            }
-
-            // Create mesh filters and renderers for each line
-            for (int i = 0; i < numLines; i++)
-            {
-                var renderObject = renderers.transform.GetChild(i).gameObject;
                 MeshFilter meshFilter = null;
                 MeshRenderer meshRenderer = null;
                 if (!renderObject.TryGetComponent<MeshFilter>(out meshFilter))
@@ -526,22 +526,15 @@ namespace IVLab.ABREngine
                 meshFilter.mesh = mesh;
                 meshRenderer.material = ImpressionMaterials[0];            
                 
-                GameObject colliderObject = GenericObjectPool.Instance.GetObjectFromPool(this.GetType().Name + " meshCollider", currentGameObject.transform, go =>
-                {
-                    go.name = "ABR Line " + i;
-                });
+                GameObject colliderObject = new GameObject();
+                colliderObject.name =  "Line Collider Object "  + i;
 
-                colliderObject.transform.SetParent(renderers.transform, false);
+                colliderObject.transform.SetParent(colliders.transform, false);
                 colliderObject.transform.localPosition = Vector3.zero;
                 colliderObject.transform.localScale = Vector3.one;
                 colliderObject.transform.localRotation = Quaternion.identity;
                 
-                MeshCollider meshCollider = null;
-                if (!colliderObject.TryGetComponent<MeshRenderer>(out meshRenderer))
-                {
-                    meshCollider = colliderObject.AddComponent<MeshCollider>();
-                }
-
+                MeshCollider meshCollider = colliderObject.AddComponent<MeshCollider>();
                 meshCollider.sharedMesh = mesh;
             }
         }
@@ -731,34 +724,10 @@ namespace IVLab.ABREngine
                 meshRenderer.SetPropertyBlock(MatPropBlock);
             }
         }
-
         public override void UpdateVisibility(EncodedGameObject currentGameObject)
         {
-            if (currentGameObject == null)
-                return;
-
-            GameObject renderers = currentGameObject.transform.Find("Line Renderers").gameObject;
-            if (renderers == null)
-                return;
-            
-            for (int i = 0; i < renderers.transform.childCount; i++)
-            {
-                MeshRenderer mr = renderers.transform.GetChild(i).GetComponent<MeshRenderer>();
-                if (mr !=  null)
-                {
-                    if (RenderHints.Visible)
-                    {
-                        if (RenderHints.HasPerIndexVisibility() && i < RenderHints.PerIndexVisibility.Count)
-                            mr.enabled = RenderHints.PerIndexVisibility[i];
-                        else
-                            mr.enabled = true;
-                    }
-                    else
-                    {
-                        mr.enabled = false;
-                    }
-                }
-            }
+            currentGameObject.gameObject.SetActive(RenderHints.Visible);
+            return;
         }
     }
 }

@@ -22,6 +22,9 @@ using System.Reflection;
 using UnityEngine;
 using IVLab.Utilities;
 using System.Linq;
+using UnityEngine.UIElements;
+using Codice.Client.Common;
+using UnityEditor;
 
 namespace IVLab.ABREngine
 {
@@ -350,21 +353,25 @@ namespace IVLab.ABREngine
                 Debug.LogWarningFormat("Could not find layer {0} for SimpleGlyphDataImpression", LayerName);
             }
 
-            // Return all previous renderers to pool
-            while (renderers.transform.childCount > 0)
+            // Return all previous renderers and colliders to pool
+            for (int i = renderers.transform.childCount - 1; i >= 0; i--)
             {
-                GameObject child = renderers.transform.GetChild(0).gameObject;
-                GenericObjectPool.Instance.ReturnObjectToPool(child);
-            }
+                var child = renderers.transform.GetChild(i).gameObject;
+                UnityEngine.Object.Destroy(child);
+            }  
+
+            for (int i = colliders.transform.childCount - 1; i >= 0; i--)
+            {
+                var child = colliders.transform.GetChild(i).gameObject;
+                UnityEngine.Object.Destroy(child);
+            }  
 
             // Create pooled game objects with mesh renderer and instanced mesh renderer
             int rendererCount = glyph?.VisAssetCount - 1 ?? 0;
             for (int stopIndex = -1; stopIndex < rendererCount; stopIndex++)
             {
-                GameObject childRenderer = GenericObjectPool.Instance.GetObjectFromPool(this.GetType() + "GlyphRenderer", currentGameObject.transform, (go) =>
-                {
-                    go.name = "Glyph Renderer Object " + stopIndex;
-                });
+                GameObject childRenderer = new GameObject();
+                childRenderer.name = "Glyph Renderer Object " + stopIndex;
 
                 // Parent the glyph renderer to this Data Impression and ensure that it's centered correctly
                 // Unsure why necessary...
@@ -396,7 +403,20 @@ namespace IVLab.ABREngine
                 imr.instanceMaterial = ImpressionMaterials[0];
                 imr.block = new MaterialPropertyBlock();
                 imr.cachedInstanceCount = -1;
+            }                
+#if false 
+            foreach (int i  in Enumerable.Range(0, positions.Length))
+            {
+                Vector3 p = positions[i];
+                colliderObj  = new GameObject();
+                colliderObj.name = "ABR Glyph Collider" + i
+                colliderObj.transform.parent = colliders.transform;
+                SphereCollider sphereCollider = colliderObj.AddComponent<SphereCollider>();
+                sphereCollider.transform.SetParent(colliders.transform, false);
+                sphereCollider.radius = glyphMeshSizes[i] * glyphMeshScale * 0.2f;  // diameter to radius, then smaller still
+                sphereCollider.center = p;
             }
+#endif
         }
 
         public override void UpdateStyling(EncodedGameObject currentGameObject)
@@ -411,25 +431,11 @@ namespace IVLab.ABREngine
             GameObject colliders = currentGameObject.transform.Find("Glyph Colliders").gameObject;
             if (colliders == null)
                 return;
-
-            while (colliders.transform.childCount > 0)
-            {
-                GameObject child = colliders.transform.GetChild(0).gameObject;
-                GenericObjectPool.Instance.ReturnObjectToPool(child);
-            }
-
-/*
-            for (int i = 0; i < renderers.transform.childCount; i++)
-            {
-                GameObject child = renderers.transform.GetChild(i).gameObject;
-                GenericObjectPool.Instance.ReturnObjectToPool(child);
-            }
-*/                            
+                          
             // Rescale the glyphs depending on their current "Glyph Size" input
             ABRConfig config = ABREngine.Instance.Config;
             string plateType = this.GetType().GetCustomAttribute<ABRPlateType>().plateType;
             glyphMeshScale = glyphSize?.Value ?? config.GetInputValueDefault<LengthPrimitive>(plateType, "Glyph Size").Value;
-
             glyphMeshSizes = new float[renderers.transform.childCount];
 
             for (int glyphIndex = 0; glyphIndex < renderers.transform.childCount; glyphIndex++)
@@ -568,54 +574,7 @@ namespace IVLab.ABREngine
                 // Apply scalar/density changes to the instanced mesh renderer
                 imr.instanceDensity = glyphDensityOut;
                 imr.renderInfo = glyphRenderInfo;
-
-#if false
-                // If we're rendering different glyphs based on a scalar variable, filter these now, otherwise leave as-is
-FIXME Not sure whats going on here... this is for using a gradient on value to choose which of several glyphs to use
-Don't see it being used anywhere else though...  I thought we should use  that slot of the renderInfo for a data-driven scale value
-
-                if (glyph?.VisAssetCount > 1 && glyphVariable != null && glyphVariable.IsPartOf(keyData))
-                {
-                    GlyphGradient gradient = glyph as GlyphGradient;
-                    // Determine if a scalar value falls within the range of this glyph's gradient stop
-                    Func<float, bool> filterData = (float scalarValue) =>
-                    {
-                        int stopIndex = glyphIndex - 1;
-                        if (gradient.Stops.Count == 0)
-                            return true;
-
-                        if (stopIndex < 0)
-                            return scalarValue < gradient.Stops[0];
-                        else if (stopIndex >= gradient.Stops.Count - 1)
-                            return scalarValue >= gradient.Stops[gradient.Stops.Count - 1];
-                        else
-                            return scalarValue >= gradient.Stops[stopIndex] && scalarValue < gradient.Stops[stopIndex + 1];
-                    };
-                    // Calculate subset of data (transforms) for this renderer
-                    Matrix4x4[] transformsWithThisGlyph = imr.instanceLocalTransforms.Where((tf, i) =>
-                    {
-                        // Glyph variable is packed at index 1
-                        float scalarValue = glyphRenderInfo[i][1];
-                        float normalizedScalarValue = (scalarValue - glyphVariable.Range.min) / (glyphVariable.Range.max - glyphVariable.Range.min);
-                        return filterData(normalizedScalarValue);
-                    }).ToArray();
-
-                    // Calculate subset of data (actual data values) for this renderer
-                    Vector4[] scalarValuesWithThisGlyph = glyphRenderInfo.Where((sc, i) =>
-                    {
-                        // Glyph variable is packed at index 1
-                        float scalarValue = glyphRenderInfo[i][2];
-                        float normalizedScalarValue = (scalarValue - glyphVariable.Range.min) / (glyphVariable.Range.max - glyphVariable.Range.min);
-                        return filterData(normalizedScalarValue);
-                    }).ToArray();
-
-
-                    // Re-apply transforms and render info for THIS specific glyph
-                    imr.instanceLocalTransforms = transformsWithThisGlyph;
-                    imr.renderInfo = scalarValuesWithThisyphMeGlyph;
-                }
-#endif
-
+          
                 // Apply changes to the mesh's shader / material
                 block.SetFloat("_ColorDataMin", colorVariableMin);
                 block.SetFloat("_ColorDataMax", colorVariableMax);
@@ -623,7 +582,6 @@ Don't see it being used anywhere else though...  I thought we should use  that s
                 block.SetColor("_OutlineColor", outlineColor);
                 block.SetFloat("_OutlineWidth", outlineWidth?.Value ?? 0.0f);
                 block.SetInt("_ForceOutlineColor", (forceOutlineColor?.Value ?? false) ? 1 : 0);
-
 
                 if (colormap?.GetColorGradient() != null)
                 {
@@ -636,44 +594,56 @@ Don't see it being used anywhere else though...  I thought we should use  that s
                     block.SetInt("_UseColorMap", 0);
                 }
 
-
                 imr.block = block;
 
                 imr.cachedInstanceCount = -1;      
-
-                foreach (int i  in Enumerable.Range(0, positions.Length))
-                {
-                    Vector3 p = positions[i];
-
-                    GameObject colliderObj = GenericObjectPool.Instance.GetObjectFromPool(this.GetType() + "GlyphRenderer", currentGameObject.transform, (go) =>
-                    {
-                        go.name = "ABR Glyph " + i;
-                    });
-
-                    colliderObj.transform.parent = colliders.transform;
-
-                    SphereCollider sphereCollider = colliderObj.AddComponent<SphereCollider>();
-                    sphereCollider.transform.SetParent(colliders.transform, false);
-                    sphereCollider.radius = glyphMeshSizes[glyphIndex] * glyphMeshScale * 0.2f;  // diameter to radius, then smaller still
-                    sphereCollider.center = p;
-                }
 
             }
         }
 
         public override void UpdateVisibility(EncodedGameObject currentGameObject)
         {
-            GameObject renderers = currentGameObject.transform.Find("Glyph Renderers").gameObject;
-            if (renderers == null)
-                return; 
+            GameObject colliders = currentGameObject.transform.Find("Glyph Colliders").gameObject;
+            if (colliders == null)
+                return;
 
-            foreach (InstancedMeshRenderer imr in renderers?.GetComponentsInChildren<InstancedMeshRenderer>())
+            if (RenderHints.Visible)
             {
-                if (imr != null)
+                // I don't know why, but making the impression inactive and then active again
+                // changes the transforms on the colliders.  So when we make the impressing inactive 
+                // we destroy all the colliders, and when we make it active again we recreate them.
+
+                if (colliders.transform.childCount == 0)
                 {
-                    imr.enabled = RenderHints.Visible;
+                    for (int i = 0; i < positions.Length; i++)
+                    {
+                        Vector3 p = positions[i];
+                        GameObject colliderObj = new GameObject();
+                        colliderObj.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                        colliderObj.transform.localScale = Vector3.one;
+                        colliderObj.name = "ABR Glyph Collider " + i;
+                                            
+                        SphereCollider collider = colliderObj.AddComponent<SphereCollider>();
+        
+                        collider.radius = glyphMeshSizes[0] * glyphMeshScale * 0.2f;  // diameter to radius, then smaller still
+                        collider.center = p;
+                        colliderObj.transform.parent = colliders.transform;
+                    };
                 }
             }
+            else
+            {
+                for (int i = colliders.transform.childCount - 1; i >= 0; i--)
+                {
+                    var child = colliders.transform.GetChild(i).gameObject;
+                    UnityEngine.Object.Destroy(child);
+                }   
+            }
+                
+            currentGameObject.gameObject.SetActive(RenderHints.Visible);
+
+            return;
+
         }
 
         public override void Cleanup(EncodedGameObject currentGameObject)
@@ -685,11 +655,11 @@ Don't see it being used anywhere else though...  I thought we should use  that s
                 return;
 
             // Return all previous renderers to pool
-            while (renderers.transform.childCount > 0)
+            for (int i = renderers.transform.childCount - 1; i >= 0; i--)
             {
-                GameObject child = renderers.transform.GetChild(0).gameObject;
-                GenericObjectPool.Instance.ReturnObjectToPool(child);
-            }
+                var child = renderers.transform.GetChild(i).gameObject;
+                UnityEngine.Object.Destroy(child);
+            }  
             perGlyphVisibilityBuffer?.Release();
         }
 

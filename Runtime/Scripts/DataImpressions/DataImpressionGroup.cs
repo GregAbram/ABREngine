@@ -465,17 +465,17 @@ namespace IVLab.ABREngine
                     {
                         PrepareImpression(impression.Value);
                         impression.Value.ComputeGeometry();
-                        Guid uuid = impression.Key;
-                        impression.Value.SetupGameObject(gameObjectMapping[uuid]);
-                        impression.Value.UpdateStyling(gameObjectMapping[uuid]);
-                        impression.Value.UpdateVisibility(gameObjectMapping[uuid]);
+                        impression.Value.SetupGameObject(gameObjectMapping[impression.Key]);
+                        //impression.Value.UpdateStyling(gameObjectMapping[uuid]);
+                        //impression.Value.UpdateVisibility(gameObjectMapping[uuid]);
+                        impression.Value.RenderHints.VisibilityChanged = true;
+                        impression.Value.RenderHints.StyleChanged = true;
                         impression.Value.RenderHints.DataChanged = false;
-                        impression.Value.RenderHints.StyleChanged = false;
                     }
                     // Compute and apply style info to the impression object if its
                     // styling has changed (but only if we haven't already performed 
                     // data changed computations since those inherently update styling)
-                    else if (impression.Value.RenderHints.StyleChanged)
+                    if (impression.Value.RenderHints.StyleChanged)
                     {
                         Guid uuid = impression.Key;
                         impression.Value.UpdateStyling(gameObjectMapping[uuid]);

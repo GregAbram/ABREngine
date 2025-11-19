@@ -139,8 +139,6 @@ namespace IVLab.ABREngine
                 transformBufferInverse.Release();
             transformBufferInverse = new ComputeBuffer(instanceCount, sizeof(float) * 16);
 
-
-
             Matrix4x4[] instanceLocalTransformsInverse = new Matrix4x4[instanceLocalTransforms.Length];
             for (int i = 0; i < instanceLocalTransforms.Length; i++)
             {
@@ -171,6 +169,13 @@ namespace IVLab.ABREngine
 
             cachedInstanceCount = instanceCount;
             cachedSubMeshIndex = subMeshIndex;
+        }
+
+        ~InstancedMeshRenderer()
+        {
+            renderInfoBuffer?.Release();
+            transformBuffer?.Release();
+            transformBufferInverse?.Release();
         }
     }
 }

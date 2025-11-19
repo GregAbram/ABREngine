@@ -404,19 +404,6 @@ namespace IVLab.ABREngine
                 imr.block = new MaterialPropertyBlock();
                 imr.cachedInstanceCount = -1;
             }                
-#if false 
-            foreach (int i  in Enumerable.Range(0, positions.Length))
-            {
-                Vector3 p = positions[i];
-                colliderObj  = new GameObject();
-                colliderObj.name = "ABR Glyph Collider" + i
-                colliderObj.transform.parent = colliders.transform;
-                SphereCollider sphereCollider = colliderObj.AddComponent<SphereCollider>();
-                sphereCollider.transform.SetParent(colliders.transform, false);
-                sphereCollider.radius = glyphMeshSizes[i] * glyphMeshScale * 0.2f;  // diameter to radius, then smaller still
-                sphereCollider.center = p;
-            }
-#endif
         }
 
         public override void UpdateStyling(EncodedGameObject currentGameObject)
@@ -627,7 +614,7 @@ namespace IVLab.ABREngine
         
                         collider.radius = glyphMeshSizes[0] * glyphMeshScale * 0.2f;  // diameter to radius, then smaller still
                         collider.center = p;
-                        colliderObj.transform.parent = colliders.transform;
+                        colliderObj.transform.SetParent(colliders.transform, false);
                     };
                 }
             }

@@ -570,7 +570,7 @@ namespace IVLab.ABREngine
             
             if (positions != null)
             {
-                for (int i = 0; i < positions?.Length; i++)
+                for (int i = 0; i < positions.Length; i++)
                 {
                     Vector3 p = positions[i];
                     GameObject colliderObj = new GameObject();

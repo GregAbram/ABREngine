@@ -564,23 +564,28 @@ namespace IVLab.ABREngine
                 UnityEngine.Object.Destroy(colliders);
             }          
             
+
             colliders = new GameObject("Glyph Colliders");
             colliders.transform.SetParent(currentGameObject.transform, false);
-
-            for (int i = 0; i < positions.Length; i++)
+            
+            if (positions != null)
             {
-                Vector3 p = positions[i];
-                GameObject colliderObj = new GameObject();
-                colliderObj.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-                colliderObj.transform.localScale = Vector3.one;
-                colliderObj.name = "ABR Glyph Collider " + i;
-                                    
-                SphereCollider collider = colliderObj.AddComponent<SphereCollider>();
+                for (int i = 0; i < positions?.Length; i++)
+                {
+                    Vector3 p = positions[i];
+                    GameObject colliderObj = new GameObject();
+                    colliderObj.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                    colliderObj.transform.localScale = Vector3.one;
+                    colliderObj.name = "ABR Glyph Collider " + i;
+                                        
+                    SphereCollider collider = colliderObj.AddComponent<SphereCollider>();
 
-                collider.radius = glyphMeshSizes[0] * glyphMeshScale * 0.2f;  // diameter to radius, then smaller still
-                collider.center = p;
-                colliderObj.transform.SetParent(colliders.transform, false);
-            };
+                    collider.radius = glyphMeshSizes[0] * glyphMeshScale * 0.2f;  // diameter to radius, then smaller still
+                    collider.center = p;
+                    colliderObj.transform.SetParent(colliders.transform, false);
+                };                
+            }
+
 
             return;      
         }

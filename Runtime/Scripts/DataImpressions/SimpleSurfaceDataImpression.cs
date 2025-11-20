@@ -268,17 +268,6 @@ namespace IVLab.ABREngine
                     renderInfo.vertices[i] = group.GroupToDataMatrix * dataset.vertexArray[j].ToHomogeneous();
                 }
 
-                // Vector3[] dataNormals = null;
-                // Vector3[] meshNormals = null;
-                // if (ABRManager.IsValidNode(normalVariable))
-                // {
-                //     dataNormals = normalVariable.GetVectorArray(dataset);
-                // }
-                //else if((generateNormals?.floatVal??0) <= 0.0f)
-                //{
-                //    dataNormals = dataset.GetVectorArray("Normals");
-                //}
-
                 Vector3[] dataNormals = dataset.GetVectorArray("Normals_");
                 if (dataNormals == null)
                 {   
@@ -327,9 +316,6 @@ namespace IVLab.ABREngine
                         renderInfo.indices[i] = dataset.indexArray[i];
                     }
                 }
-
-                //meshIndices[(i + numCells) * cellSize + j] = dataset.indexArray[(i) * cellSize + (cellSize - 1 - j)] + dataset.vertexArray.Length;
-
 
                 if (backFace)
                 {

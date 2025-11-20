@@ -63,14 +63,13 @@ namespace IVLab.ABREngine
         {
             public string mediaDirectory;
             public string serverURL;     
-           // public bool useAutoDataContainer;   
             public jvector center;
             public jvector rotation;
             public double scale;
             public jvector defaultColor;
             public jvector hiliteColor;
             public jvector nanColor;
-           // public ExternalDataContainer container;
+            public int dataListenerPort;
             public RemoteDataSource[] remotes;
         };
 
@@ -194,7 +193,6 @@ namespace IVLab.ABREngine
             mediaPath = Application.persistentDataPath;
             serverUrl = "";
             loadStateOnStart = "";
-           // dataContainer = new Bounds(Vector3.zero, Vector3.one * 2.0f);
 
             defaultGlyph = Resources.Load<GameObject>("DefaultSphere");
             defaultGlyph.SetActive(false);
@@ -329,26 +327,26 @@ namespace IVLab.ABREngine
                 cfg.defaultColor = new jvector() { x = defaultColor.r, y = defaultColor.g, z = defaultColor.b };
                 cfg.hiliteColor = new jvector() { x = hiliteColor.r, y = hiliteColor.g, z = hiliteColor.b };
                 cfg.nanColor = new jvector() { x = defaultNanColor.r, y = defaultNanColor.g, z = defaultNanColor.b };   
-                
-                JsonConvert.PopulateObject(json, cfg);
+                cfg.dataListenerPort = dataListenerPort;
 
+                JsonConvert.PopulateObject(json, cfg);
                 Debug.Log("Using external configuration file: " + cfgFile);
 
-                serverUrl = cfg.serverURL;
                 mediaPath = cfg.mediaDirectory;
+                serverUrl = cfg.serverURL;
+                center = new Vector3(cfg.center.x, cfg.center.y, cfg.center.z);
+                rotation = new Vector3(cfg.rotation.x, cfg.rotation.y, cfg.rotation.z);
+                scale = cfg.scale;
                 defaultColor = new Color(cfg.defaultColor.x, cfg.defaultColor.y, cfg.defaultColor.z)    ;
                 hiliteColor = new Color(cfg.hiliteColor.x, cfg.hiliteColor.y, cfg.hiliteColor.z);
                 defaultNanColor = new Color(cfg.nanColor.x, cfg.nanColor.y, cfg.nanColor.z);
+                dataListenerPort = cfg.dataListenerPort;
+                remotes = cfg.remotes;
                 
                 if (!System.IO.Path.IsPathRooted(mediaPath))
                 {
                     mediaPath = Path.Combine(abr_root, mediaPath);
-                }
-
-                remotes = cfg.remotes;
-                center = new Vector3(cfg.center.x, cfg.center.y, cfg.center.z);
-                rotation = new Vector3(cfg.rotation.x, cfg.rotation.y, cfg.rotation.z);
-                scale = cfg.scale;
+                }            
             }
             catch (Exception e)
             {

@@ -168,11 +168,6 @@ namespace IVLab.ABREngine
         /// </summary>
         public BooleanPrimitive forceOutlineColor;
 
-        /// <summary>
-        ///    Compute buffer used to quickly pass per-glyph visibility flags to GPU
-        /// </summary>
-        private ComputeBuffer perGlyphVisibilityBuffer;
-
         protected override string[] MaterialNames { get; } = { "ABR_Glyphs", "ABR_GlyphsOutline" };
         protected override string LayerName { get; } = "ABR_Glyph";
 
@@ -496,26 +491,6 @@ namespace IVLab.ABREngine
                     glyphRenderInfo = imr.renderInfo;
                 }
 
-                // Hide/show glyphs based on per index visibility
-                if (RenderHints.HasPerIndexVisibility() && RenderHints.PerIndexVisibility.Count == numPoints)
-                {
-                    // Copy per-index bit array to int array so that it can be sent to GPU
-                    int[] perGlyphVisibility = new int[(numPoints - 1) / sizeof(int) + 1];
-                    RenderHints.PerIndexVisibility.CopyTo(perGlyphVisibility, 0);
-                    // Initialize the compute buffer if it is uninitialized
-                    if (perGlyphVisibilityBuffer == null)
-                        perGlyphVisibilityBuffer = new ComputeBuffer(perGlyphVisibility.Length, sizeof(int), ComputeBufferType.Default);
-                    // Set buffer data to int array and send to shader
-                    perGlyphVisibilityBuffer.SetData(perGlyphVisibility);
-                    block.SetBuffer("_PerGlyphVisibility", perGlyphVisibilityBuffer);
-                    block.SetInt("_HasPerGlyphVisibility", 1);
-                }
-                else
-                {
-                    block.SetInt("_HasPerGlyphVisibility", 0);
-                    block.SetBuffer("_PerGlyphVisibility", new ComputeBuffer(1, sizeof(int), ComputeBufferType.Default));
-                }
-
                 // Get keydata-specific range, if there is one
                 float colorVariableMin = 0.0f;
                 float colorVariableMax = 0.0f;
@@ -630,7 +605,6 @@ namespace IVLab.ABREngine
                 var child = renderers.transform.GetChild(i).gameObject;
                 UnityEngine.Object.Destroy(child);
             }  
-            perGlyphVisibilityBuffer?.Release();
         }
 
         // Samples k glyphs, modifying glyph render info so that only they will be rendered
@@ -672,13 +646,6 @@ namespace IVLab.ABREngine
                     glyphRenderInfo[i][3] = -1;  // discard the glyph
                 }
             }
-        }
-
-        void OnDisable()
-        {
-            if (perGlyphVisibilityBuffer != null)
-                perGlyphVisibilityBuffer.Release();
-            perGlyphVisibilityBuffer = null;
         }
     }
 }

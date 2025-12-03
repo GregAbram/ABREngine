@@ -26,7 +26,8 @@ using UnityEngine;
 namespace IVLab.ABREngine
 {
     public class SimpleLineRenderInfo : IDataImpressionRenderInfo
-    {
+    {        
+        public string dataPath {get; set;}
         public Vector3[][] vertices;
         public int[][] indices;
         public Vector3[][] normals;
@@ -202,7 +203,8 @@ namespace IVLab.ABREngine
             if (keyData == null)
             {
                 renderInfo = new SimpleLineRenderInfo
-                {
+                {   
+                    dataPath = "none",
                     vertices = new Vector3[0][],
                     indices = new int[0][],
                     scalars = new Color[0][],
@@ -244,7 +246,8 @@ namespace IVLab.ABREngine
                 int numLines = 0;
                 numLines = dataset.cellIndexCounts.Length;
                 renderInfo = new SimpleLineRenderInfo
-                {
+                {                    
+                    dataPath = keyData?.Path,
                     vertices = new Vector3[numLines][],
                     indices = new int[numLines][],
                     scalars = new Color[numLines][],
@@ -442,24 +445,24 @@ namespace IVLab.ABREngine
 
             base.SetupGameObject(currentGameObject);
 
-            GameObject renderers = currentGameObject.transform.Find("Line Renderers")?.gameObject;
+            GameObject renderers = currentGameObject.transform.Find("ABR Line Renderers")?.gameObject;
             if (renderers != null)
             {
                 renderers.name = "renderers being deleted";
                 UnityEngine.Object.Destroy(renderers);
             }
 
-            renderers = new GameObject("Line Renderers");
+            renderers = new GameObject("ABR Line Renderers");
             renderers.transform.SetParent(currentGameObject.transform, false);
 
-            GameObject colliders = currentGameObject.transform.Find("Line Colliders")?.gameObject;
+            GameObject colliders = currentGameObject.transform.Find("ABR Line Colliders")?.gameObject;
             if (colliders != null)
             {
                 colliders.name = "colliders being deleted";
                 UnityEngine.Object.Destroy(colliders);
             }
 
-            colliders = new GameObject("Line Colliders");
+            colliders = new GameObject("ABR Line Colliders");
             colliders.transform.SetParent(currentGameObject.transform, false);
 
             // Find ABR Layer
@@ -484,7 +487,7 @@ namespace IVLab.ABREngine
             for (int i = 0; i < numLines; i++)
             {
                 GameObject renderObject = new GameObject();
-                renderObject.name =  "Line Render Object "  + i;
+                renderObject.name =  "ABR Line Render Object "  + i;
                 renderObject.transform.SetParent(renderers.transform, false);
                 renderObject.transform.localPosition = Vector3.zero;
                 renderObject.transform.localScale = Vector3.one;
@@ -527,7 +530,7 @@ namespace IVLab.ABREngine
                 meshRenderer.material = ImpressionMaterials[0];            
                 
                 GameObject colliderObject = new GameObject();
-                colliderObject.name =  "Line Collider Object "  + i;
+                colliderObject.name =  "ABR Line Collider Object "  + i;
 
                 colliderObject.transform.SetParent(colliders.transform, false);
                 colliderObject.transform.localPosition = Vector3.zero;
@@ -536,6 +539,12 @@ namespace IVLab.ABREngine
                 
                 MeshCollider meshCollider = colliderObject.AddComponent<MeshCollider>();
                 meshCollider.sharedMesh = mesh;
+            
+                InstanceId instanceId = colliderObject.AddComponent<InstanceId>();
+                instanceId.id = i;
+
+                MatPropBlock = new MaterialPropertyBlock();
+                meshRenderer.SetPropertyBlock(MatPropBlock);
             }
         }
 
@@ -550,11 +559,11 @@ namespace IVLab.ABREngine
                 return;
             }
 
-            GameObject renderers = currentGameObject.transform.Find("Line Renderers").gameObject;
+            GameObject renderers = currentGameObject.transform.Find("ABR Line Renderers").gameObject;
             if (renderers == null)
                 return;
 
-            GameObject colliders = currentGameObject.transform.Find("Line Colliders").gameObject;
+            GameObject colliders = currentGameObject.transform.Find("ABR Line Colliders").gameObject;
             if (colliders == null)
                 return;
 

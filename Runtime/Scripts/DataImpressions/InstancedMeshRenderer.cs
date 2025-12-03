@@ -21,6 +21,8 @@ using UnityEngine;
 using System.Collections;
 using UnityEngine.Rendering;
 using Codice.CM.Client.Differences.Graphic;
+using System;
+using PlasticPipe.PlasticProtocol.Messages;
 
 namespace IVLab.ABREngine
 {
@@ -38,6 +40,9 @@ namespace IVLab.ABREngine
         // z = 
         // a = whether or not instance should be rendered (a >= 0 -> RENDER, a < 0 -> DISCARD)
         public Vector4[] renderInfo;
+        public int[] hiliteBuffer;
+
+
         // Ratio of instances that are actually being rendered (not discarded) out of all instances
         public float instanceDensity = 1.0f;
         public int instanceCount = 100000;
@@ -51,6 +56,7 @@ namespace IVLab.ABREngine
         private ComputeBuffer renderInfoBuffer;
         private ComputeBuffer transformBuffer;
         private ComputeBuffer transformBufferInverse;
+        private ComputeBuffer perInstanceHiliteBuffer;
 
 
         private ComputeBuffer argsBuffer = null;
@@ -77,6 +83,7 @@ namespace IVLab.ABREngine
 
                 if (block == null)
                     block = new MaterialPropertyBlock();
+
                 UpdateBuffers();
             }
 
@@ -109,19 +116,13 @@ namespace IVLab.ABREngine
             }
         }
 
-        //void OnGUI()
-        //{
-        //    GUI.Label(new Rect(265, 25, 200, 30), "Instance Count: " + instanceCount.ToString());
-        //    instanceCount = (int)GUI.HorizontalSlider(new Rect(25, 20, 200, 30), (float)instanceCount, 1.0f, 5000000.0f);
-        //}
-
         void UpdateBuffers()
         {
             invalid = true;
             if (instanceLocalTransforms == null || instanceLocalTransforms.Length == 0 || block == null) return;
             invalid = false;
             instanceCount = instanceLocalTransforms.Length;
-            //Debug.Log("UpdatingBuffers");
+
             // Ensure submesh index is in range
             if (instanceMesh != null)
                 subMeshIndex = Mathf.Clamp(subMeshIndex, 0, instanceMesh.subMeshCount - 1);
@@ -139,6 +140,10 @@ namespace IVLab.ABREngine
                 transformBufferInverse.Release();
             transformBufferInverse = new ComputeBuffer(instanceCount, sizeof(float) * 16);
 
+            if (perInstanceHiliteBuffer != null)
+                perInstanceHiliteBuffer.Release();
+            perInstanceHiliteBuffer = new ComputeBuffer((instanceCount / 32) + 1, sizeof(Int32));
+
             Matrix4x4[] instanceLocalTransformsInverse = new Matrix4x4[instanceLocalTransforms.Length];
             for (int i = 0; i < instanceLocalTransforms.Length; i++)
             {
@@ -149,9 +154,12 @@ namespace IVLab.ABREngine
             transformBufferInverse.SetData(instanceLocalTransformsInverse);
             renderInfoBuffer.SetData(renderInfo);
 
+            perInstanceHiliteBuffer.SetData(hiliteBuffer);
+
             block.SetBuffer("transformBuffer", transformBuffer);
             block.SetBuffer("transformBufferInverse", transformBufferInverse);
             block.SetBuffer("renderInfoBuffer", renderInfoBuffer);
+            block.SetBuffer("perInstanceHiliteBuffer", perInstanceHiliteBuffer);
 
             // Indirect args
             if (instanceMesh != null)
@@ -171,11 +179,44 @@ namespace IVLab.ABREngine
             cachedSubMeshIndex = subMeshIndex;
         }
 
+        public void toggleHilite(int which)
+        {
+            if (hiliteBuffer != null)
+            {
+                int arrayOffset = which / 32;
+                int bitOffset = which % 32;
+                Debug.Log("toggling hilite for " + which + " arrayOffset " + arrayOffset + " bitOffset " + bitOffset);
+                hiliteBuffer[arrayOffset] = hiliteBuffer[arrayOffset] ^ (1 << bitOffset);
+                UpdateBuffers();
+            }
+        }
+        public void setHilite(int which)
+        {
+            if (hiliteBuffer != null)
+            {
+                int arrayOffset = which / 32;
+                int bitOffset = which % 32;
+
+                hiliteBuffer[arrayOffset] = hiliteBuffer[arrayOffset] ^ (1 << bitOffset);
+            }
+        }
+        public void clearHilite(int which)
+        {
+            if (hiliteBuffer != null)
+            {
+                int arrayOffset = which / 32;
+                int bitOffset = which % 32;
+
+                hiliteBuffer[arrayOffset] = hiliteBuffer[arrayOffset] & ~(1 << bitOffset);
+            }
+        }
+
         void OnDestroy()
         {
             renderInfoBuffer?.Release();
             transformBuffer?.Release();
             transformBufferInverse?.Release();
+            perInstanceHiliteBuffer?.Release();
             argsBuffer?.Release();
         }
     }

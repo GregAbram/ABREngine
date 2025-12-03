@@ -20,19 +20,18 @@
 using System;
 using System.Reflection;
 using UnityEngine;
-using IVLab.Utilities;
-using System.Linq;
-using UnityEngine.UIElements;
-using Codice.Client.Common;
-using UnityEditor;
+
 
 namespace IVLab.ABREngine
 {
+
     class SimpleGlyphRenderInfo : IDataImpressionRenderInfo
     {
+        public string dataPath {get; set;} 
         public Matrix4x4[] transforms;
         public Vector4[] scalars;
         public Bounds bounds;
+        public Int32[] hiliteFlags;
     }
 
     /// <summary>
@@ -200,9 +199,11 @@ namespace IVLab.ABREngine
             {
                 RenderInfo = new SimpleGlyphRenderInfo
                 {
+                    dataPath = "none",
                     transforms = new Matrix4x4[0],
                     scalars = new Vector4[0],
                     bounds = new Bounds(),
+                    hiliteFlags = new int[0],
                 };
             }
             else
@@ -297,9 +298,16 @@ namespace IVLab.ABREngine
 
                 var encodingRenderInfo = new SimpleGlyphRenderInfo()
                 {
+                    dataPath = keyData?.Path,
                     transforms = new Matrix4x4[numPoints],
                     scalars = new Vector4[numPoints]
                 };
+
+                int flagBufferSize = (numPoints / 32) + 1;
+
+                encodingRenderInfo.hiliteFlags = new Int32[flagBufferSize];
+                for (int i  = 0; i < flagBufferSize; i++)
+                    encodingRenderInfo.hiliteFlags[i] = 0;
 
                 // Get glyph scale and apply to instance mesh renderer transform
                 ABRConfig config = ABREngine.Instance.Config;
@@ -333,7 +341,7 @@ namespace IVLab.ABREngine
             renderers.transform.SetParent(currentGameObject.transform, false);
 
             GameObject colliders = new GameObject("Glyph Colliders");
-            colliders.transform.SetParent(currentGameObject.transform, false);
+            colliders.transform.SetParent(currentGameObject.gameObject.transform, false);
             
             var SSrenderData = RenderInfo as SimpleGlyphRenderInfo;
 
@@ -425,7 +433,8 @@ namespace IVLab.ABREngine
                     continue;
 
                 imr.instanceLocalTransforms = SSrenderData.transforms;
-                imr.renderInfo = SSrenderData.scalars;
+                imr.renderInfo = SSrenderData.scalars;               
+                imr.hiliteBuffer = SSrenderData.hiliteFlags;
 
                 // Set up outline, if present
                 if (showOutline != null && showOutline.Value)
@@ -540,6 +549,8 @@ namespace IVLab.ABREngine
                 block.SetColor("_OutlineColor", outlineColor);
                 block.SetFloat("_OutlineWidth", outlineWidth?.Value ?? 0.0f);
                 block.SetInt("_ForceOutlineColor", (forceOutlineColor?.Value ?? false) ? 1 : 0);
+                block.SetColor("_HiliteColor" , ABREngine.Instance.Config.hiliteColor);                
+                
 
                 if (colormap?.GetColorGradient() != null)
                 {
@@ -583,9 +594,11 @@ namespace IVLab.ABREngine
                     collider.radius = glyphMeshSizes[0] * glyphMeshScale * 0.2f;  // diameter to radius, then smaller still
                     collider.center = p;
                     colliderObj.transform.SetParent(colliders.transform, false);
+
+                    InstanceId instanceId = colliderObj.AddComponent<InstanceId>();
+                    instanceId.id = i;
                 };                
             }
-
 
             return;      
         }
@@ -652,5 +665,59 @@ namespace IVLab.ABREngine
                 }
             }
         }
+
+        public void toggleHilite(EncodedGameObject currentGameObject, int which)
+        {
+            GameObject renderers = currentGameObject.transform.Find("Glyph Renderers").gameObject;
+            if (renderers == null)
+                return;
+
+            for (int glyphIndex = 0; glyphIndex < renderers.transform.childCount; glyphIndex++)
+            {
+                // Exit immediately if the game object or instanced mesh renderer relevant to this
+                // impression do not yet exist
+                InstancedMeshRenderer imr = renderers?.transform.GetChild(glyphIndex).GetComponent<InstancedMeshRenderer>();
+                if (imr == null)
+                    continue;
+            
+                imr.toggleHilite(which);
+            }
+        }        
+        
+        public void setHilite(EncodedGameObject currentGameObject, int which)
+        {
+            GameObject renderers = currentGameObject.transform.Find("Glyph Renderers").gameObject;
+            if (renderers == null)
+                return;
+
+            for (int glyphIndex = 0; glyphIndex < renderers.transform.childCount; glyphIndex++)
+            {
+                // Exit immediately if the game object or instanced mesh renderer relevant to this
+                // impression do not yet exist
+                InstancedMeshRenderer imr = renderers?.transform.GetChild(glyphIndex).GetComponent<InstancedMeshRenderer>();
+                if (imr == null)
+                    continue;
+            
+                imr.setHilite(which);
+            }
+        }
+
+        public void clearHilite(EncodedGameObject currentGameObject, int which)
+        {
+            GameObject renderers = currentGameObject.transform.Find("Glyph Renderers").gameObject;
+            if (renderers == null)
+                return;
+
+            for (int glyphIndex = 0; glyphIndex < renderers.transform.childCount; glyphIndex++)
+            {
+                // Exit immediately if the game object or instanced mesh renderer relevant to this
+                // impression do not yet exist
+                InstancedMeshRenderer imr = renderers?.transform.GetChild(glyphIndex).GetComponent<InstancedMeshRenderer>();
+                if (imr == null)
+                    continue;
+            
+                imr.clearHilite(which);
+            }
+        }
     }
-}
+}   

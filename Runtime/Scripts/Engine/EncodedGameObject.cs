@@ -35,6 +35,9 @@ namespace IVLab.ABREngine
     /// </remarks>
     public class EncodedGameObject : MonoBehaviour
     {
+        EncodedGameObject()
+        {
+        }
         /// <summary>
         /// The UUID of the data impression this GameObject is encoding.
         /// </summary>

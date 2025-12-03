@@ -33,6 +33,8 @@ int _ForceOutlineColor;
 sampler2D _ColorMap;
 float4 _Color;
 float4 _NaNColor;
+float4 _HiliteColor;
+
 float _ColorDataMin;
 float _ColorDataMax;
 
@@ -44,12 +46,19 @@ struct Input {
 };
 
 #ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
+
 StructuredBuffer<float4> renderInfoBuffer;
 StructuredBuffer<float4x4> transformBuffer;
 StructuredBuffer<float4x4> transformBufferInverse;
+
 // Per glyph visibility flags
-int _HasPerGlyphVisibility;
-StructuredBuffer<int> _PerGlyphVisibility;
+int _HasPerInstanceVisibility;
+StructuredBuffer<int> perInstanceVisibilityBuffer;
+
+// Per glyph hilite flags
+int _HasPerInstanceHilite;
+StructuredBuffer<int> perInstanceHiliteBuffer;
+
 #endif
 
 // Set up for rendering this glyph

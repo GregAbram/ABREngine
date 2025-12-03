@@ -24,7 +24,8 @@ using UnityEngine;
 namespace IVLab.ABREngine
 {
     public class SimpleSurfaceRenderInfo : IDataImpressionRenderInfo
-    {
+    {        
+        public string dataPath {get; set;}
         public Vector3[] vertices;
         public int[] indices;
         public Vector3[] normals;
@@ -189,6 +190,8 @@ namespace IVLab.ABREngine
         // Whether or not to render the back faces of the mesh
         private bool backFace = true;
 
+        public bool hilite = false;
+
         /// <summary>
         ///     Construct a data impession with a given UUID. Note that this
         ///     will be called from ABRState and must assume that there's a
@@ -244,9 +247,9 @@ namespace IVLab.ABREngine
                     numIndices *= 2;
                 }
 
-
                 renderInfo = new SimpleSurfaceRenderInfo
                 {
+                    dataPath = keyData?.Path,
                     vertices = new Vector3[numPoints],
                     indices = new int[numIndices],
                     scalars = new Color[numPoints],
@@ -523,6 +526,8 @@ namespace IVLab.ABREngine
             MatPropBlock.SetFloat("_ColorDataMax", scalarMax[0]);
             MatPropBlock.SetFloat("_PatternDataMin", scalarMin[1]);
             MatPropBlock.SetFloat("_PatternDataMax", scalarMax[1]);
+            MatPropBlock.SetColor("_HiliteColor" , ABREngine.Instance.Config.hiliteColor);                
+            MatPropBlock.SetInt("_Hilite", hilite ? 1 : 0);
 
             // Load defaults from configuration / schema
             ABRConfig config = ABREngine.Instance.Config;
@@ -615,6 +620,21 @@ namespace IVLab.ABREngine
             {
                 mr.enabled = RenderHints.Visible;
             }
+        }
+
+        public void toggleHilite()
+        {
+            hilite = !hilite;
+        }        
+        
+        public void setHilite()
+        {
+            hilite = true;
+        }
+
+        public void clearHilite()
+        {
+           hilite = false;
         }
     }
 }

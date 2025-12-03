@@ -25,10 +25,20 @@ using UnityEngine;
 namespace IVLab.ABREngine
 {
     /// <summary>
+    ///     Component to hold instance ID for picking in instanced renderer
+    /// <!summary>
+    public class InstanceId : MonoBehaviour
+    {
+        public int id;
+    }   
+    
+    /// <summary>
     ///     Public interface for a single ABR visualization layer
     /// </summary>
     public interface IDataImpression : IHasDataset, IHasKeyData
     {
+
+
         /// <summary>
         ///     Unique identifier for this Data Impression
         ///
@@ -248,7 +258,10 @@ namespace IVLab.ABREngine
     }
 
 
-    public interface IDataImpressionRenderInfo { }
+    public interface IDataImpressionRenderInfo
+    {
+        public string dataPath {get; set;}
+    }
 
     /// <summary>
     ///     Hints for rendering, such as whether a data impression should be hidden

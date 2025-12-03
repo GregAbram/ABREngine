@@ -27,6 +27,7 @@ namespace IVLab.ABREngine
 {
     class InstancedSurfaceRenderInfo : IDataImpressionRenderInfo
     {
+        public string dataPath {get; set;}
         public Matrix4x4[] transforms;
         public Vector4[] scalars;
         public Bounds bounds;

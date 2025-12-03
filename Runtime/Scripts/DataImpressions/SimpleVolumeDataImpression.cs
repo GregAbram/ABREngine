@@ -28,6 +28,7 @@ namespace IVLab.ABREngine
 {
     class SimpleVolumeRenderInfo : IDataImpressionRenderInfo
     {
+        public string dataPath {get; set;}
         public Texture3D voxelTex;
         public Vector3[] vertices;
         public int[] triangles;
@@ -180,6 +181,7 @@ namespace IVLab.ABREngine
             {
                 renderInfo = new SimpleVolumeRenderInfo
                 {
+                    dataPath = "none",
                     voxelTex = null,
                     vertices = new Vector3[0],
                     triangles = new int[0],
@@ -194,7 +196,8 @@ namespace IVLab.ABREngine
 
                 // Initialize render info
                 renderInfo = new SimpleVolumeRenderInfo
-                {
+                {                    
+                    dataPath = keyData?.Path,
                     bounds = dataset.bounds
                 };
 

@@ -67,6 +67,9 @@ half _Glossiness;
 half _Metallic;
 fixed4 _Color;
 
+float4  _HiliteColor;
+int     _Hilite;
+
 // Converts from general 0->1 tex coords to *actual* tex coord within texture with given index
 float2 ActualTexCoord(float2 uv, int texIndex)
 {
@@ -376,6 +379,11 @@ float4 CalculateABRTexturedSurfaceColor(Input IN)
     {
         finalColor = _Color.rgb;
     }
+
+    if (_Hilite)
+    {
+        finalColor = _HiliteColor.rgb;
+    }   
 
     // Use Multiply method (could use overlay instead)
     if (_NumTex > 0) {

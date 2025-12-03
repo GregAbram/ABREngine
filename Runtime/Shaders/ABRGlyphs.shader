@@ -37,16 +37,17 @@ Shader "ABR/InstancedGlyphs" {
         void surf(Input IN, inout SurfaceOutputStandard o) {
             // Initialize render info
             fixed4 renderInfo;
+
 #ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
+            uint instanceIndex = unity_InstanceID / 32;
+            uint instanceOffset = unity_InstanceID % 32;
+
             renderInfo = renderInfoBuffer[unity_InstanceID];
 
             // Discard this glyph if it's not visible
-            if (_HasPerGlyphVisibility) {
-                uint glyphVisibilityIndex = unity_InstanceID / 32;
-                uint glyphVisibilityRem = unity_InstanceID % 32;
-                if (!(_PerGlyphVisibility[glyphVisibilityIndex] & (1 << glyphVisibilityRem)))
+            if (_HasPerInstanceVisibility)
+                if (!(perInstanceVisibilityBuffer[instanceIndex] & (1 << instanceOffset)))
                     discard;
-            }
 #else
             renderInfo = _RenderInfo;
 #endif
@@ -61,6 +62,7 @@ Shader "ABR/InstancedGlyphs" {
 
             // Normalizing scalar allows us to use it for colormap-texture lookup
             float scalarValueNorm = clamp(Remap(scalarValue, _ColorDataMin, _ColorDataMax, 0, 1), 0.01, 0.99);
+
             if (_UseColorMap == 1)
             {
                 if (!IsNaN_float(scalarValue))
@@ -72,6 +74,11 @@ Shader "ABR/InstancedGlyphs" {
             {
                 o.Albedo = _Color;
             }
+
+#ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
+            if (perInstanceHiliteBuffer[instanceIndex] & (1 << instanceOffset))
+                o.Albedo = _HiliteColor;
+#endif
 
             // Look up and unpack normal from texture
             float4 map1 = tex2D(_Normal, IN.uv_MainTex);

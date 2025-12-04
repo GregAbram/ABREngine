@@ -22,6 +22,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace IVLab.ABREngine
 {
@@ -33,6 +34,8 @@ namespace IVLab.ABREngine
         public Vector3[][] normals;
         public Color[][] scalars;
         public Vector2[][] uvs;
+
+        public Int32[] hiliteFlags;
     }
 
     /// <summary>
@@ -175,6 +178,9 @@ namespace IVLab.ABREngine
         /// </remarks>
         public Vector3 defaultCurveDirection = Vector3.up;
 
+        public int[] hiliteBuffer;
+        ComputeBuffer hiliteComputeBuffer = null;
+
         protected override string[] MaterialNames { get; } = { "ABR_Ribbon" };
         protected override string LayerName { get; } = "ABR_Line";
 
@@ -210,6 +216,7 @@ namespace IVLab.ABREngine
                     scalars = new Color[0][],
                     normals = new Vector3[0][],
                     uvs = new Vector2[0][],
+                    hiliteFlags = new Int32[0]
                 };
             }
             else
@@ -243,8 +250,7 @@ namespace IVLab.ABREngine
                     config.GetInputValueDefault<AnglePrimitive>(plateType, "Ribbon Rotation").Value;
                     
 
-                int numLines = 0;
-                numLines = dataset.cellIndexCounts.Length;
+                int numLines = dataset.cellIndexCounts.Length;
                 renderInfo = new SimpleLineRenderInfo
                 {                    
                     dataPath = keyData?.Path,
@@ -253,7 +259,13 @@ namespace IVLab.ABREngine
                     scalars = new Color[numLines][],
                     normals = new Vector3[numLines][],
                     uvs = new Vector2[numLines][],
+                    hiliteFlags = new Int32[(numLines / 32) + 1]
                 };
+
+                for (int i = 0; i < (numLines / 32) + 1; i++)
+                {
+                    renderInfo.hiliteFlags[i] = 0;
+                }
 
                 int pointIndex = 0;
 
@@ -262,6 +274,13 @@ namespace IVLab.ABREngine
                 {
                     colorVariableArray = colorVariable.GetArray(keyData);
                 }
+
+                if (hiliteComputeBuffer != null)
+                {
+                    hiliteComputeBuffer.Release();
+                    hiliteComputeBuffer = null;
+                }
+                hiliteComputeBuffer = new ComputeBuffer((numLines / 32) + 1, sizeof(Int32));
 
                 for (int i = 0; i < numLines; i++)
                 {
@@ -542,9 +561,6 @@ namespace IVLab.ABREngine
             
                 InstanceId instanceId = colliderObject.AddComponent<InstanceId>();
                 instanceId.id = i;
-
-                MatPropBlock = new MaterialPropertyBlock();
-                meshRenderer.SetPropertyBlock(MatPropBlock);
             }
         }
 
@@ -553,6 +569,12 @@ namespace IVLab.ABREngine
         // since those involve actually rebuilding geometry
         public override void UpdateStyling(EncodedGameObject currentGameObject)
         {
+            var lineResources = RenderInfo as SimpleLineRenderInfo;
+            if (currentGameObject == null || lineResources == null)
+            {
+                return;
+            }
+
             // Exit immediately if the game object or key data does not exist
             if (currentGameObject == null || keyData == null)
             {
@@ -697,6 +719,16 @@ namespace IVLab.ABREngine
                 MatPropBlock.SetFloat("_TextureCutoff", textureCutoffOut);
                 MatPropBlock.SetFloat("_RibbonBrightness", ribbonBrightnessOut);
 
+                MatPropBlock.SetColor("_HiliteColor" , ABREngine.Instance.Config.hiliteColor); 
+                
+                int offset = (i / 32);
+                int bit = 1 << (i % 32);
+                int hilite = (lineResources.hiliteFlags[offset] & bit) != 0 ? 1 : 0;
+                MatPropBlock.SetInt("_Hilite" , hilite);
+
+                //hiliteComputeBuffer.SetData(lineResources.hiliteFlags);
+                //MatPropBlock.SetBuffer("_perLineHiliteBuffer", hiliteComputeBuffer);
+
                 if (lineTexture != null)
                 {
                     MatPropBlock.SetTexture("_Texture", lineTexture.BlendMaps.Textures);
@@ -704,7 +736,9 @@ namespace IVLab.ABREngine
                     MatPropBlock.SetInt("_NumTex", lineTexture.VisAssetCount);
                     MatPropBlock.SetFloatArray("_TextureAspect", lineTexture.BlendMaps.AspectRatios);
                     MatPropBlock.SetFloatArray("_TextureHeightWidthAspect", lineTexture.BlendMaps.HeightWidthAspectRatios);
-                    MatPropBlock.SetInt("_UseLineTexture", 1);
+                    MatPropBlock.SetInt("_UseLineTexture", 1);                           
+
+
 
                     Texture2D defaultNanLine = ABREngine.Instance.Config.defaultNanLine;
                     Texture2D nanLine = nanLineTexture?.BlendMaps.Textures ?? defaultNanLine;
@@ -737,6 +771,62 @@ namespace IVLab.ABREngine
         {
             currentGameObject.gameObject.SetActive(RenderHints.Visible);
             return;
+        }
+        public void toggleHilite(int which)
+        {            
+            var lineResources = RenderInfo as SimpleLineRenderInfo;
+            if (lineResources == null)
+            {
+                return;
+            }
+
+            int arrayOffset = which / 32;
+            int bitOffset = which % 32;
+
+            lineResources.hiliteFlags[arrayOffset] = lineResources.hiliteFlags[arrayOffset] ^ (1 << bitOffset);
+
+            RenderHints.StyleChanged = true;     
+        }        
+        
+        public void setHilite(EncodedGameObject currentGameObject, int which)
+        {
+            var lineResources = RenderInfo as SimpleLineRenderInfo;
+            if (lineResources == null)
+            {
+                return;
+            }
+
+            int arrayOffset = which / 32;
+            int bitOffset = which % 32;
+
+            lineResources.hiliteFlags[arrayOffset] = lineResources.hiliteFlags[arrayOffset] | (1 << bitOffset);
+
+            RenderHints.StyleChanged = true;     
+        }
+
+        public void clearHilite(EncodedGameObject currentGameObject, int which)
+        {
+            var lineResources = RenderInfo as SimpleLineRenderInfo;
+            if (lineResources == null)
+            {
+                return;
+            }
+
+            int arrayOffset = which / 32;
+            int bitOffset = which % 32;
+
+            lineResources.hiliteFlags[arrayOffset] = lineResources.hiliteFlags[arrayOffset] ^ (1 << bitOffset);
+
+            RenderHints.StyleChanged = true;     
+        }
+
+        void onDestroy()
+        {
+            if (hiliteComputeBuffer != null)
+            {
+                hiliteComputeBuffer.Release();
+                hiliteComputeBuffer = null;
+            }
         }
     }
 }

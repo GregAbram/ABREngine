@@ -37,7 +37,11 @@ Shader "ABR/Ribbon"
             Tags { "Queue" = "AlphaTest" "RenderType" = "TransparentCutout"  }
             LOD 200
             Cull Back
-            CGPROGRAM
+            CGPROGRAM         
+            
+#ifdef SHADER_API_D3D11	
+            StructuredBuffer<int> _perLineHiliteBuffer;
+#endif
             // Physically based Standard lighting model, and enable shadows on all light types
             #pragma surface surf SimpleLambert fullforwardshadows vertex:vert addshadow
             // Use shader model 3.0 target, to get nicer looking lighting
@@ -46,9 +50,9 @@ Shader "ABR/Ribbon"
             // Ribbon parameters
             sampler2D _Texture;
             sampler2D _NaNTexture;
-            sampler2D _TextureNRM;
+            sampler2D _TextureNRM;  
 
-            // Aspect ratio (width / height) of textures
+            // Aspect ratio (width / height) of textures 
             float _TextureAspect[16];
             float _NaNTextureAspect;
             // Aspect ratio (height / width) of textures
@@ -78,12 +82,15 @@ Shader "ABR/Ribbon"
                 float2 ScreenPos : TEXCOORD2;
             };
 
-            half _Glossiness;
+            half _Glossiness; 
             half _Metallic;
             fixed4 _Color;
 
+            fixed4 _HiliteColor;
+            int _Hilite;
+
             // Lambert lighting for custom lighting on ribbons (use ribbon brightness instead of actual lights)
-            half4 LightingSimpleLambert(SurfaceOutput s, half3 lightDir, half atten) {
+            half4 LightingSimpleLambert(SurfaceOutput s, half3 lightDir, half atten) { 
                 half NdotL = _RibbonBrightness;// dot(s.Normal, lightDir);
                 half4 c;
                 c.rgb =  s.Albedo * _LightColor0.rgb* (atten* NdotL);
@@ -219,6 +226,12 @@ Shader "ABR/Ribbon"
                 }
 
                 o.Alpha = 1.0;
+                
+#ifdef SHADER_API_D3D11	
+                //if (_perLineHiliteBuffer[0] == 0)
+                if (_Hilite)
+                    o.Albedo = _HiliteColor;
+#endif
             }
             ENDCG
         }

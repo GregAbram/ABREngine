@@ -682,6 +682,8 @@ namespace IVLab.ABREngine
             
                 imr.toggleHilite(which);
             }
+
+            RenderHints.StyleChanged = true;
         }        
         
         public void setHilite(EncodedGameObject currentGameObject, int which)
@@ -700,6 +702,8 @@ namespace IVLab.ABREngine
             
                 imr.setHilite(which);
             }
+
+            RenderHints.StyleChanged = true;
         }
 
         public void clearHilite(EncodedGameObject currentGameObject, int which)
@@ -718,6 +722,8 @@ namespace IVLab.ABREngine
             
                 imr.clearHilite(which);
             }
+
+            RenderHints.StyleChanged = true;
         }
     }
 }   

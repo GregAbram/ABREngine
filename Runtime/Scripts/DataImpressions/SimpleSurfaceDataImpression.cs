@@ -625,16 +625,21 @@ namespace IVLab.ABREngine
         public void toggleHilite()
         {
             hilite = !hilite;
+            RenderHints.StyleChanged = true;
+
         }        
         
         public void setHilite()
         {
             hilite = true;
+            RenderHints.StyleChanged = true;
+
         }
 
         public void clearHilite()
         {
            hilite = false;
+           RenderHints.StyleChanged = true;
         }
     }
 }

@@ -185,7 +185,6 @@ namespace IVLab.ABREngine
             {
                 int arrayOffset = which / 32;
                 int bitOffset = which % 32;
-                Debug.Log("toggling hilite for " + which + " arrayOffset " + arrayOffset + " bitOffset " + bitOffset);
                 hiliteBuffer[arrayOffset] = hiliteBuffer[arrayOffset] ^ (1 << bitOffset);
                 UpdateBuffers();
             }
@@ -197,7 +196,7 @@ namespace IVLab.ABREngine
                 int arrayOffset = which / 32;
                 int bitOffset = which % 32;
 
-                hiliteBuffer[arrayOffset] = hiliteBuffer[arrayOffset] ^ (1 << bitOffset);
+                hiliteBuffer[arrayOffset] = hiliteBuffer[arrayOffset] | (1 << bitOffset);
             }
         }
         public void clearHilite(int which)

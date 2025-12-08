@@ -76,11 +76,27 @@ namespace IVLab.ABREngine
 
         public JObject GetState(string url)
         {
-            HttpResponseMessage stateResponse = ABREngine.httpClient.GetAsync(url).Result;
-            stateResponse.EnsureSuccessStatusCode();
-            string fullStateJson = stateResponse.Content.ReadAsStringAsync().Result;
-            var r = JObject.Parse(fullStateJson)["state"].ToObject<JObject>();
-            return r;
+            string fullStateJson;
+            JObject state;
+
+            var extension = Path.GetExtension(url).ToLower();
+            if (extension == ".json")
+            {
+                if (! File.Exists(url))
+                    throw new FileNotFoundException("Could not find state file at: " + url);
+                
+                fullStateJson = File.ReadAllText(url);
+                state = JObject.Parse(fullStateJson).ToObject<JObject>();
+            }
+            else
+            {
+                HttpResponseMessage stateResponse = ABREngine.httpClient.GetAsync(url).Result;
+                stateResponse.EnsureSuccessStatusCode();
+                fullStateJson = stateResponse.Content.ReadAsStringAsync().Result;
+                state = JObject.Parse(fullStateJson)["state"].ToObject<JObject>();
+            }
+
+            return state;
         }
 
         public void SaveState(string name, string serializedState)

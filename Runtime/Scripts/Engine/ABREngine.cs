@@ -360,20 +360,6 @@ namespace IVLab.ABREngine
 
             try
             {
-                if (Config.serverUrl.Length > 0)
-                {
-                    _notifier = new Notifier(Config.ServerUrl);
-                    _notifier.Init();
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Unable to connect to state server " + Config.serverUrl);
-                Debug.LogError(e);
-            }
-
-            try
-            {
                 VisAssets = new VisAssetManager(Path.Combine(MediaPath, ABRConfig.Consts.VisAssetFolder));
                 Data = new DataManager(Path.Combine(MediaPath, ABRConfig.Consts.DatasetFolder));
                 if (Config.dataListenerPort != 0)
@@ -387,11 +373,30 @@ namespace IVLab.ABREngine
                 Debug.LogError(e);
             }
 
-            // Fetch the state from the server, if we're connected
-            if (Config.serverUrl != null && _notifier != null)
+            // Fetch the state from the either the server, if its a url, or from a local file if has  a 
+            // .json  extension
+
+            try
             {
-                LoadState<HttpStateFileLoader>(Config.serverUrl.ToString());
+                if (Config.serverUrl.Length > 0)
+                {
+                    string  url = Config.serverUrl.ToString();
+                    LoadState<HttpStateFileLoader>(url);
+                    
+                    // If not a local json file, Start up notifier to listen for state changes from server
+                    if (Path.GetExtension(url).ToLower() != ".json")
+                    {
+                        _notifier = new Notifier(Config.ServerUrl);
+                        _notifier.Init();
+                    }
+                }
             }
+            catch (Exception e)
+            {
+                Debug.LogError("Unable to connect to state server " + Config.serverUrl);
+                Debug.LogError(e);
+            }
+
             IsInitialized = true;
 
             // If a state in streaming assets or resources is specified, load it

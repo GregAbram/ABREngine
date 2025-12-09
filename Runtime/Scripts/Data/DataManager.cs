@@ -411,15 +411,15 @@ namespace IVLab.ABREngine
 
         private FileInfo GetRawDatasetMetadataFile(string tag, string dataPath)
         {
-            string extension;
+            string extension = "crap!";
 
-            if (tag == "dataset" || tag == "series")
+            if (tag == "timestep")
             {
-                extension = ".json";
+                extension = ".tstep";
             }
             else
             {
-                extension = ".tstep";
+                extension = ".json";
             }
 
                 return new System.IO.FileInfo(System.IO.Path.Combine(this.appDataPath, dataPath + extension));

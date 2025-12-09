@@ -204,19 +204,6 @@ namespace IVLab.ABREngine
                 else
                     num_points = bdh.dimensions[0] * bdh.dimensions[1] * bdh.dimensions[2];
 
-
-#if false
-                if (bdh.meshTopology == DataTopology.Triangles)
-                {
-                    for (int i = 0; i < bdh.num_points; i++)
-                    {
-                        float t = vertices[3*i + 1];
-                        vertices[3*i + 1] = vertices[3*i + 2];
-                        vertices[3*i + 2] = t;
-                    }
-                }
-#endif
-
                 Vector3 center = ABREngine.Instance.Config.center;
                 float scale = (float)ABREngine.Instance.Config.scale;
 

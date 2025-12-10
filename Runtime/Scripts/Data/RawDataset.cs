@@ -377,10 +377,6 @@ namespace IVLab.ABREngine
                     string binFile = binFiles[i];
                     string fname = Path.GetFileNameWithoutExtension(binFile);
 
-                    //parts = binFile.Split('/');
-                    //string[] s0 = parts[parts.Length - 1].Split('.');
-                    //string[] s1 = s0[0].Split('-');
-
                     if (fname.Length > 1)
                     {
                         string timestring = RSplit(fname, "-", 1)[1];

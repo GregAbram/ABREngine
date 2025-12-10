@@ -378,17 +378,17 @@ namespace IVLab.ABREngine
 
             try
             {
-                if (Config.serverUrl.Length > 0)
+                if (Config.stateFile != null)
                 {
-                    string  url = Config.serverUrl.ToString();
-                    LoadState<HttpStateFileLoader>(url);
-                    
-                    // If not a local json file, Start up notifier to listen for state changes from server
-                    if (Path.GetExtension(url).ToLower() != ".json")
-                    {
-                        _notifier = new Notifier(Config.ServerUrl);
-                        _notifier.Init();
-                    }
+                    string statePath = Config.stateFile;
+                    LoadState<PathStateFileLoader>(statePath);
+                }
+                else
+                {
+                    LoadState<HttpStateFileLoader>(Config.serverUrl.ToString());
+                    _notifier = new Notifier(Config.ServerUrl);
+                    _notifier.Init();
+
                 }
             }
             catch (Exception e)

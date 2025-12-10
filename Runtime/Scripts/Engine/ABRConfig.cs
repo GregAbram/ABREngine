@@ -63,6 +63,7 @@ namespace IVLab.ABREngine
         {
             public string mediaDirectory;
             public string serverURL;     
+            public string stateFile;     
             public jvector center;
             public jvector rotation;
             public double scale;
@@ -83,11 +84,18 @@ namespace IVLab.ABREngine
         public string mediaPath;
 
         /// <summary>
-        ///     What server to connect to, if any. If provided, ABR will try to
-        ///     register with the server immediately upon startup. Default: null
+        ///     If not getting the state from a file, this identifies what server to connect to.
+        ///     If provided, ABR will try to register with the server immediately upon startup. 
+        ///     Default: null
         /// </summary>
         [Tooltip("Full URL of the ABR server / visualization manager that this app should connect to. Leave blank for no server.")]
-        public string serverUrl;
+        public string serverUrl;        
+        
+        /// <summary>
+        ///     If not from a server, load a state from a local file.  Default: null
+        /// </summary>
+        [Tooltip("Full filepath of statefile / visualization manager that this app should connect to. Leave blank for no server.")]
+        public string stateFile;
 
         /// <summary>
         /// Load a state from resources on ABREngine startup
@@ -192,6 +200,7 @@ namespace IVLab.ABREngine
         {
             mediaPath = Application.persistentDataPath;
             serverUrl = "";
+            stateFile = "";
             loadStateOnStart = "";
 
             defaultGlyph = Resources.Load<GameObject>("DefaultSphere");
@@ -334,6 +343,7 @@ namespace IVLab.ABREngine
 
                 mediaPath = cfg.mediaDirectory;
                 serverUrl = cfg.serverURL;
+                stateFile = cfg.stateFile;
                 center = new Vector3(cfg.center.x, cfg.center.y, cfg.center.z);
                 rotation = new Vector3(cfg.rotation.x, cfg.rotation.y, cfg.rotation.z);
                 scale = cfg.scale;

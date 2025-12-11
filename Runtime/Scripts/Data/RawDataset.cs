@@ -30,6 +30,7 @@ using System.Net.Sockets;
 using IVLab.Utilities;
 using UnityEngine.AI;
 using UnityEditor;
+using PlasticPipe.PlasticProtocol.Messages;
 
 namespace IVLab.ABREngine
 {
@@ -40,6 +41,7 @@ namespace IVLab.ABREngine
         [SerializeField]
         public float[] array;
     }
+
     [System.Serializable]
     public class SerializableVectorArray
     {
@@ -104,13 +106,13 @@ namespace IVLab.ABREngine
         public Vector3[] vertexArray;
 
         [SerializeField]
-        public Vector3[][] vectorArrays;
+        public SerializableVectorArray[] vectorArrays;
 
         [SerializeField]
         public string[] vectorArrayNames;
 
         [SerializeField]
-        public float[][] scalarArrays;
+        public SerializableFloatArray[] scalarArrays;
 
         // NOTE: Matrix arrays not yet supported in data format
         // Pending rewrite of data format.
@@ -592,14 +594,14 @@ namespace IVLab.ABREngine
             scalarMins = info.scalarMins;
             scalarMaxes = info.scalarMaxes;
 
-            float[][] floats;
-            floats = new float[2];
-
-            scalarArrays = new float[info.scalarArrayNames.Count()];
+            scalarArrays = new SerializableFloatArray[info.scalarArrayNames.Count()];
+            
             for (int i = 0; i < scalarArrayNames.Count(); i++)
             {
                 scalarArrays[i] = new SerializableFloatArray();
-                scalarArrays[i].array = bd.scalar_arrays[i];
+                scalarArrays[i].array = new float[info.num_points];
+                for (int j = 0; j < info.num_points; j++)
+                    scalarArrays[i].array[j] = bd.scalar_arrays[i][j];
             }
 
             vectorArrays = new SerializableVectorArray[info.vectorArrayNames.Count()];

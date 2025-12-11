@@ -64,6 +64,8 @@ namespace IVLab.ABREngine
         {
             if (listener != null) return;
             listener = new TcpListener(port: port, localaddr: IPAddress.Any);
+            listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+
             listener.Start();
             listener.BeginAcceptTcpClient(
                 new System.AsyncCallback(DoAcceptSocketCallback), listener);

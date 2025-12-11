@@ -104,13 +104,13 @@ namespace IVLab.ABREngine
         public Vector3[] vertexArray;
 
         [SerializeField]
-        public SerializableVectorArray[] vectorArrays;
+        public Vector3[][] vectorArrays;
 
         [SerializeField]
         public string[] vectorArrayNames;
 
         [SerializeField]
-        public SerializableFloatArray[] scalarArrays;
+        public float[][] scalarArrays;
 
         // NOTE: Matrix arrays not yet supported in data format
         // Pending rewrite of data format.
@@ -592,7 +592,10 @@ namespace IVLab.ABREngine
             scalarMins = info.scalarMins;
             scalarMaxes = info.scalarMaxes;
 
-            scalarArrays = new SerializableFloatArray[info.scalarArrayNames.Count()];
+            float[][] floats;
+            floats = new float[2];
+
+            scalarArrays = new float[info.scalarArrayNames.Count()];
             for (int i = 0; i < scalarArrayNames.Count(); i++)
             {
                 scalarArrays[i] = new SerializableFloatArray();

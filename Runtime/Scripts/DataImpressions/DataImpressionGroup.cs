@@ -466,6 +466,9 @@ namespace IVLab.ABREngine
                         PrepareImpression(impression.Value);
                         impression.Value.ComputeGeometry();
                         impression.Value.SetupGameObject(gameObjectMapping[impression.Key]);
+
+                        GameObject go = gameObjectMapping[impression.Key].gameObject;
+                        
                         //impression.Value.UpdateStyling(gameObjectMapping[uuid]);
                         //impression.Value.UpdateVisibility(gameObjectMapping[uuid]);
                         impression.Value.RenderHints.VisibilityChanged = true;

@@ -20,6 +20,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace IVLab.ABREngine
@@ -109,7 +110,7 @@ namespace IVLab.ABREngine
         RenderHints RenderHints { get; set; }
 
         public ScalarDataVariable GetColorVariable();
-
+        public string GetColorVariableName();
     }
 
     /// <summary>
@@ -122,7 +123,12 @@ namespace IVLab.ABREngine
         [ABRInput("Color Variable", "Color", UpdateLevel.Style)]
         public ScalarDataVariable colorVariable;
         public ScalarDataVariable GetColorVariable() { return colorVariable; }
-
+        public string GetColorVariableName() 
+        { 
+            string[] parts = GetColorVariable().Path.Split("/");
+            return parts.Last();
+        }
+            
         public Guid Uuid { get; set; }
 
         public ABRInputIndexerModule InputIndexer { get; set; }

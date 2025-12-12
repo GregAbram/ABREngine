@@ -55,16 +55,6 @@ namespace IVLab.ABREngine
         public KeyData keyData;
 
         /// <summary>
-        /// Scalar color variable applied to each point of this data impression.
-        /// This example switches between X-axis monotonically increasing and
-        /// Y-axis monotonically increasing.
-        ///
-        /// <img src="../resources/api/SimpleSurfaceDataImpression/colorVariable.gif"/>
-        /// </summary>
-        [ABRInput("Color Variable", "Color", UpdateLevel.Style)]
-        public ScalarDataVariable colorVariable;
-
-        /// <summary>
         /// Colormap applied to the <see cref="colorVariable"/>. This example
         /// switches between a linear white-to-green colormap and a linear
         /// black-to-white colormap.

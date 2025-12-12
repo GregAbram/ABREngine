@@ -107,6 +107,9 @@ namespace IVLab.ABREngine
         ///     should be hidden
         /// </summary>
         RenderHints RenderHints { get; set; }
+
+        public ScalarDataVariable GetColorVariable();
+
     }
 
     /// <summary>
@@ -116,6 +119,10 @@ namespace IVLab.ABREngine
     /// </summary>
     public abstract class DataImpression : IDataImpression, IHasDataset
     {
+        [ABRInput("Color Variable", "Color", UpdateLevel.Style)]
+        public ScalarDataVariable colorVariable;
+        public ScalarDataVariable GetColorVariable() { return colorVariable; }
+
         public Guid Uuid { get; set; }
 
         public ABRInputIndexerModule InputIndexer { get; set; }

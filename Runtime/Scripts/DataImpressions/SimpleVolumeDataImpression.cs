@@ -58,14 +58,6 @@ namespace IVLab.ABREngine
 
 
         /// <summary>
-        /// Scalar color variable applied to each voxel of this data impression
-        /// - affects both the <see cref="colormap"/> and the <see
-        /// cref="opacitymap"/>.
-        /// </summary>
-        [ABRInput("Color Variable", "Color", UpdateLevel.Data)]
-        public ScalarDataVariable colorVariable;
-
-        /// <summary>
         /// Colormap applied to the <see cref="colorVariable"/>. This example
         /// switches between a linear white-to-green colormap and a linear
         /// black-to-white colormap.

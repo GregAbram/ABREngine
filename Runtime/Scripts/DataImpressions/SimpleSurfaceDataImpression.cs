@@ -349,12 +349,18 @@ namespace IVLab.ABREngine
             {
                 meshFilter = currentGameObject.gameObject.AddComponent<MeshFilter>();
             }
+
             if (!currentGameObject.TryGetComponent<MeshRenderer>(out meshRenderer))
             {
                 meshRenderer = currentGameObject.gameObject.AddComponent<MeshRenderer>();
             }
 
-            MeshCollider collider = currentGameObject.gameObject.AddComponent<MeshCollider>();
+            MeshCollider collider = null;
+            if (!currentGameObject.TryGetComponent<MeshCollider>(out collider))
+            {
+                collider =  currentGameObject.gameObject.AddComponent<MeshCollider>();
+            }
+
             collider.sharedMesh = meshFilter.mesh;
             collider.name = "ABR Surface";
              

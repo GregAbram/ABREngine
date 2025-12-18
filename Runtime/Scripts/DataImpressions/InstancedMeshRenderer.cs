@@ -18,11 +18,8 @@
  */
 
 using UnityEngine;
-using System.Collections;
 using UnityEngine.Rendering;
-using Codice.CM.Client.Differences.Graphic;
 using System;
-using PlasticPipe.PlasticProtocol.Messages;
 
 namespace IVLab.ABREngine
 {

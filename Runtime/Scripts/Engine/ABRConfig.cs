@@ -225,6 +225,8 @@ namespace IVLab.ABREngine
 
         public void Setup()
         {
+            Debug.Log("XX App dataPath: " +  Application.dataPath);
+
             // Check for a backed up schema
             string backupSchemaDir = Path.Combine(Application.streamingAssetsPath, "schemas");
             string backupSchema = null;
@@ -315,13 +317,28 @@ namespace IVLab.ABREngine
 
             if (abr_root == null)
             {
+                Debug.Log("trying env var");
                 abr_root = Environment.GetEnvironmentVariable("ABR_ROOT");
             }
 
             if (abr_root == null)
             {
-                abr_root = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                Debug.Log("nope... " + Application.dataPath);
+                abr_root = Application.dataPath;
+                Debug.Log("platform: " + Application.platform);
+                Debug.Log("Grok " + RuntimePlatform.WindowsPlayer + " and " + RuntimePlatform.OSXPlayer) ;
+                if (Application.platform == RuntimePlatform.OSXPlayer) 
+                {
+                    abr_root = abr_root + "/../../";
+                }
+                else if (Application.platform == RuntimePlatform.WindowsPlayer) 
+                {
+                    abr_root = abr_root + "/../";
+                }
+                //abr_root = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             }
+
+            Debug.Log("ABR_ROOT: " + abr_root);
 
             string cfgFile = Path.Combine(abr_root, "abr.json");
             
@@ -352,6 +369,12 @@ namespace IVLab.ABREngine
                 defaultNanColor = new Color(cfg.nanColor.x, cfg.nanColor.y, cfg.nanColor.z);
                 dataListenerPort = cfg.dataListenerPort;
                 remotes = cfg.remotes;
+
+                if (mediaPath.StartsWith("ABR_ROOT"))
+                    mediaPath = abr_root + mediaPath.Substring(8);
+
+                if (stateFile.StartsWith("ABR_ROOT"))
+                    stateFile = abr_root + stateFile.Substring(8);
                 
                 if (!System.IO.Path.IsPathRooted(mediaPath))
                 {

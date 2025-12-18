@@ -45,9 +45,9 @@ Shader "ABR/InstancedGlyphs" {
             renderInfo = renderInfoBuffer[unity_InstanceID];
 
             // Discard this glyph if it's not visible
-            if (_HasPerInstanceVisibility)
-                if (!(perInstanceVisibilityBuffer[instanceIndex] & (1 << instanceOffset)))
-                    discard;
+            //if (_HasPerInstanceVisibility)
+                //if (!(perInstanceVisibilityBuffer[instanceIndex] & (1 << instanceOffset)))
+                    //discard;
 #else
             renderInfo = _RenderInfo;
 #endif

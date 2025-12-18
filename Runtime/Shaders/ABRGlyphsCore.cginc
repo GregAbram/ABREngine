@@ -53,7 +53,7 @@ StructuredBuffer<float4x4> transformBufferInverse;
 
 // Per glyph visibility flags
 int _HasPerInstanceVisibility;
-StructuredBuffer<int> perInstanceVisibilityBuffer;
+//StructuredBuffer<int> perInstanceVisibilityBuffer;
 
 // Per glyph hilite flags
 int _HasPerInstanceHilite;

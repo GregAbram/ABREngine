@@ -34,10 +34,9 @@ namespace IVLab.ABREngine
                 
                 GameObject abrGO = hit.collider.gameObject;
 
-                int id = -1;
                 if (! abrGO.TryGetComponent<IVLab.ABREngine.InstanceId>(out IVLab.ABREngine.InstanceId pickId))
                 {
-                    id = -1;
+                    return;
                 }
 
                 if (abrGO.name.Contains("ABR Surface"))

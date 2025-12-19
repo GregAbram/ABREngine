@@ -716,9 +716,6 @@ namespace IVLab.ABREngine
                 int hilite = (lineResources.hiliteFlags[offset] & bit) != 0 ? 1 : 0;
                 MatPropBlock.SetInt("_Hilite" , hilite);
 
-                //hiliteComputeBuffer.SetData(lineResources.hiliteFlags);
-                //MatPropBlock.SetBuffer("_perLineHiliteBuffer", hiliteComputeBuffer);
-
                 if (lineTexture != null)
                 {
                     MatPropBlock.SetTexture("_Texture", lineTexture.BlendMaps.Textures);

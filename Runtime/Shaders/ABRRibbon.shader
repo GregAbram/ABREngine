@@ -226,12 +226,8 @@ Shader "ABR/Ribbon"
                 }
 
                 o.Alpha = 1.0;
-                
-#ifdef SHADER_API_D3D11	
-                //if (_perLineHiliteBuffer[0] == 0)
                 if (_Hilite)
                     o.Albedo = _HiliteColor;
-#endif
             }
             ENDCG
         }

@@ -8,6 +8,8 @@ namespace IVLab.ABREngine
     {
         public List<GameObject> listeners;
 
+        public int button = 1;
+        public char modifier = 'n'; // n = none, c = ctrl, a = alt, s = shift
 
         public struct ABRPick
         {
@@ -34,10 +36,9 @@ namespace IVLab.ABREngine
                 
                 GameObject abrGO = hit.collider.gameObject;
 
-                int id = -1;
                 if (! abrGO.TryGetComponent<IVLab.ABREngine.InstanceId>(out IVLab.ABREngine.InstanceId pickId))
                 {
-                    id = -1;
+                    return;
                 }
 
                 if (abrGO.name.Contains("ABR Surface"))
@@ -99,9 +100,15 @@ namespace IVLab.ABREngine
 
         void Update()
         {
-            if (Input.GetMouseButtonDown(1)) // right mouse button
+            if (Input.GetMouseButtonDown(button)) // right mouse button
             {
-                Raycast();
+                if (modifier == 'n' ||
+                    (modifier == 'c' && Input.GetKey(KeyCode.LeftControl)) ||
+                    (modifier == 'a' && Input.GetKey(KeyCode.LeftAlt)) ||
+                    (modifier == 's' && Input.GetKey(KeyCode.LeftShift)))
+                {
+                    Raycast();
+                }
             }
         }
     }

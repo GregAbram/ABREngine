@@ -345,15 +345,31 @@ namespace IVLab.ABREngine
                 meshRenderer = currentGameObject.gameObject.AddComponent<MeshRenderer>();
             }
 
+#if false
             MeshCollider collider = null;
             if (!currentGameObject.TryGetComponent<MeshCollider>(out collider))
             {
-                collider =  currentGameObject.gameObject.AddComponent<MeshCollider>();
-            }
 
-            collider.sharedMesh = meshFilter.mesh;
-            collider.name = "ABR Surface";
-             
+                GameObject colliderObj = new GameObject("ColliderObject");
+                colliderObj.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                colliderObj.transform.localScale = Vector3.one;
+                colliderObj.name = "ABR Surface Collider";
+                colliderObj.transform.SetParent(currentGameObject.transform, false);
+                collider =  colliderObj.AddComponent<MeshCollider>();
+                InstanceId instanceId = colliderObj.AddComponent<InstanceId>();
+                instanceId.id = -1;
+            }
+#else
+            if (!currentGameObject.TryGetComponent<MeshCollider>(out MeshCollider collider))
+            {
+                collider = currentGameObject.gameObject.AddComponent<MeshCollider>();
+                collider.sharedMesh = meshFilter.mesh;
+                collider.name = "ABR Surface";
+                InstanceId instanceId = currentGameObject.gameObject.AddComponent<InstanceId>();
+                instanceId.id = -1;
+            }
+#endif
+
             // Ensure we have a layer to work with
             int layerID = LayerMask.NameToLayer(LayerName);
             if (layerID >= 0)

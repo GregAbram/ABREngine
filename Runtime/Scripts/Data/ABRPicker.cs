@@ -29,7 +29,12 @@ namespace IVLab.ABREngine
 
         public void Raycast()
         {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+#if ENABLE_INPUT_SYSTEM    
+            Vector2 mousePosition = Mouse.current.position.ReadValue();
+#else
+            Vector3 mousePosition = Input.mousePosition;
+#endif
+            Ray ray = Camera.main.ScreenPointToRay(mousePosition);
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
                 ABRPick abrPick = new ABRPick();
@@ -133,6 +138,7 @@ namespace IVLab.ABREngine
         }
     }
 }
+
 
 
 

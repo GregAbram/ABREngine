@@ -110,14 +110,23 @@ namespace IVLab.ABREngine
                 case 1: b =  Mouse.current.rightButton.wasPressedThisFrame; break;
                 case 2: b =  Mouse.current.middleButton.wasPressedThisFrame; break;
             }
+
+            bool c = Keyboard.current.ctrlKey.isPressed;
+            bool a = Keyboard.current.altKey.isPressed;
+            bool s = Keyboard.current.shiftKey.isPressed;    
 #else
-            b = Input.GetMouseButtonDown(button);
+            b = Input.GetMouseButtonDown(button);       
+            bool c = Input.GetKey(KeyCode.LeftControl);
+            bool a = Input.GetKey(KeyCode.LeftAlt);
+            bool s = Input.GetKey(KeyCode.LeftShift);        
+  
+            
 #endif
             if (b)
-                if (modifier == 'n' ||
-                    (modifier == 'c' && Input.GetKey(KeyCode.LeftControl)) ||
-                    (modifier == 'a' && Input.GetKey(KeyCode.LeftAlt)) ||
-                    (modifier == 's' && Input.GetKey(KeyCode.LeftShift)))
+                if ((modifier == 'n' && !c && !a && !s) ||
+                    (modifier == 'c' &&  c && !a && !s) ||
+                    (modifier == 'a' && !c &&  a && !s) ||
+                    (modifier == 's' && !c && !a &&  s))
                 {
                     Raycast();
                 }
@@ -125,4 +134,5 @@ namespace IVLab.ABREngine
         }
     }
 }
+
 

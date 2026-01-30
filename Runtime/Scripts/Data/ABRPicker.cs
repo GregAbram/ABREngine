@@ -1,4 +1,5 @@
-using System;
+
+{using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -122,11 +123,11 @@ namespace IVLab.ABREngine
   
             
 #endif
-            if (b)
-                if ((modifier == 'n' && !c && !a && !s) ||
-                    (modifier == 'c' &&  c && !a && !s) ||
-                    (modifier == 'a' && !c &&  a && !s) ||
-                    (modifier == 's' && !c && !a &&  s))
+            if (b &&
+                ((modifier == 'n' && !c && !a && !s) ||
+                 (modifier == 'c' &&  c && !a && !s) ||
+                 (modifier == 'a' && !c &&  a && !s) ||
+                 (modifier == 's' && !c && !a &&  s))
                 {
                     Raycast();
                 }
@@ -134,5 +135,6 @@ namespace IVLab.ABREngine
         }
     }
 }
+
 
 

@@ -126,7 +126,7 @@ namespace IVLab.ABREngine
                 ((modifier == 'n' && !c && !a && !s) ||
                  (modifier == 'c' &&  c && !a && !s) ||
                  (modifier == 'a' && !c &&  a && !s) ||
-                 (modifier == 's' && !c && !a &&  s))
+                 (modifier == 's' && !c && !a &&  s)))
                 {
                     Raycast();
                 }
@@ -134,6 +134,7 @@ namespace IVLab.ABREngine
         }
     }
 }
+
 
 
 

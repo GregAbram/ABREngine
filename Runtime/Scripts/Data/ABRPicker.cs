@@ -130,10 +130,10 @@ namespace IVLab.ABREngine
                 {
                     Raycast();
                 }
-            }
         }
     }
 }
+
 
 
 

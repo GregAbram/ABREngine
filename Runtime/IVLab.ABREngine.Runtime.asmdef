@@ -1,7 +1,7 @@
 {
     "name": "IVLab.ABREngine.Runtime",
     "references": [
-        "UnityEngine.InputSystem",
+        "Unity.InputSystem",
         "IVLab.Utilities.Runtime",
         "IVLab.OBJImport",
         "JsonDiffPatchDotNet",
@@ -17,5 +17,6 @@
     "versionDefines": [],
     "noEngineReferences": false
 }
+
 
 

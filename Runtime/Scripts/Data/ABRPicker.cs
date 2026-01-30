@@ -103,7 +103,7 @@ namespace IVLab.ABREngine
         {
 
             bool b = false;
-#if ENABLE_INPUT_SYSEM
+#if ENABLE_INPUT_SYSTEM
             switch (button)
             {
                 case 0: b =  Mouse.current.leftButton.wasPressedThisFrame; break;
@@ -133,6 +133,7 @@ namespace IVLab.ABREngine
         }
     }
 }
+
 
 
 

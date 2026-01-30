@@ -338,6 +338,9 @@ namespace IVLab.ABREngine
 
         protected override void Awake()
         {
+            if (! Config)
+                Config = new ABRConfig();
+                
             Config.Setup();
 
             // Enable depth texture write on main cam so that volume rendering
@@ -1261,3 +1264,4 @@ namespace IVLab.ABREngine
         }
     }
 }
+

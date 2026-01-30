@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace IVLab.ABREngine
 {
@@ -100,8 +101,19 @@ namespace IVLab.ABREngine
 
         void Update()
         {
-            if (Input.GetMouseButtonDown(button)) // right mouse button
+
+            bool b = false;
+#if ENABLE_INPUT_SYSEM
+            switch (button)
             {
+                case 0: b =  Mouse.current.leftButton.wasPressedThisFrame; break;
+                case 1: b =  Mouse.current.rightButton.wasPressedThisFrame; break;
+                case 2: b =  Mouse.current.middleButton.wasPressedThisFrame; break;
+            }
+#else
+            b = Input.GetMouseButtonDown(button);
+#endif
+            if (b)
                 if (modifier == 'n' ||
                     (modifier == 'c' && Input.GetKey(KeyCode.LeftControl)) ||
                     (modifier == 'a' && Input.GetKey(KeyCode.LeftAlt)) ||
@@ -113,3 +125,4 @@ namespace IVLab.ABREngine
         }
     }
 }
+

@@ -111,9 +111,9 @@ namespace IVLab.ABREngine
 #if ENABLE_INPUT_SYSTEM
             switch (button)
             {
-                case 0: b =  Mouse.current.leftButton.wasPressedThisFrame; break;
-                case 1: b =  Mouse.current.rightButton.wasPressedThisFrame; break;
-                case 2: b =  Mouse.current.middleButton.wasPressedThisFrame; break;
+                case 1: b =  Mouse.current.leftButton.wasPressedThisFrame; break;
+                case 2: b =  Mouse.current.rightButton.wasPressedThisFrame; break;
+                case 3: b =  Mouse.current.middleButton.wasPressedThisFrame; break;
             }
 
             bool c = Keyboard.current.ctrlKey.isPressed;
@@ -138,6 +138,7 @@ namespace IVLab.ABREngine
         }
     }
 }
+
 
 
 

@@ -1,8 +1,6 @@
-
 using System.Linq;
 using IVLab.ABREngine;
 using UnityEngine;
-
 
 public class DatasetAccessor
 {
@@ -34,7 +32,7 @@ public class DatasetAccessor
     public string GetColorVariableName()
     {        
         string colorArrayName = impression.GetColorVariable().Path.Split('/').Last();
-        return "foo";
+        return colorArrayName;
     }
 }
 
@@ -42,7 +40,7 @@ public class SurfaceDatasetAccessor : DatasetAccessor
 {            
     public SurfaceDatasetAccessor(RawDataset dset, IDataImpression idi) : base(dset, idi) {}
 
-    public bool GetScalarValue(ABRPicker.ABRPick pick, out float value)
+    public bool GetScalarValue(int id, Vector3 barycentric_weights, out float value)
     {
         SimpleSurfaceDataImpression surfaceImpression = impression as SimpleSurfaceDataImpression;
         SimpleSurfaceRenderInfo renderInfo = surfaceImpression.RenderInfo as SimpleSurfaceRenderInfo;
@@ -65,12 +63,11 @@ public class SurfaceDatasetAccessor : DatasetAccessor
 
         SerializableFloatArray data = dataset.scalarArrays[indx];
 
-        // pick.id is in the mesh - which doubles the number of triangles to handle backfacers.
+        // id is in the mesh - which doubles the number of triangles to handle backfacers.
         float p, q, r;
         int ip, iq, ir;
 
-        int id = pick.id;
-        if (pick.id >= dataset.cellIndexOffsets.Length)
+        if (id >= dataset.cellIndexOffsets.Length)
         {
             id = id - dataset.cellIndexOffsets.Length;
             int triangleIndex = dataset.cellIndexOffsets[id];             
@@ -90,7 +87,7 @@ public class SurfaceDatasetAccessor : DatasetAccessor
         q = data.array[iq];
         r = data.array[ir];
 
-        value = pick.barycentric_weights[0] * p + pick.barycentric_weights[1] * q + pick.barycentric_weights[2] * r;
+        value = barycentric_weights[0] * p + barycentric_weights[1] * q + barycentric_weights[2] * r;
         Debug.Log(p + " " + q + " " + r + " = " + value);
 
         return true;

@@ -47,6 +47,9 @@ Shader "ABR/InstancedGlyphsOutline" {
             #pragma multi_compile_instancing
             #pragma instancing_options procedural:setup
 
+            StructuredBuffer<int> _PerGlyphVisibility;
+            int _HasPerGlyphVisibility;
+
             struct appdata
             {
                 float4 vertex : POSITION;
@@ -121,6 +124,11 @@ Shader "ABR/InstancedGlyphsOutline" {
 
             half _OutlineWidth;
             half4 _OutlineColor;
+
+            StructuredBuffer<int> _PerGlyphVisibility;            
+            int _HasPerGlyphVisibility;
+
+
 
             struct appdata {
                 float4 vertex : POSITION;

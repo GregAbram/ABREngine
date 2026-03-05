@@ -14,7 +14,6 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 Shader "ABR/InstancedGlyphsOutline" {
     Properties{
     }
@@ -22,7 +21,7 @@ Shader "ABR/InstancedGlyphsOutline" {
         Tags { "RenderType" = "Opaque"  }
         LOD 200
 
-        // Pass 1: Render the basic object
+        // Pass 1: Render the basic object 
         Pass {
             // However, don't show the object to the screen or make it depth-intersect anything
             Blend Zero One

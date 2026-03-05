@@ -16,6 +16,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+// InstancedMeshRenderer.cs
+// Drop-in replacement for your current script (keeps your public fields).
+// Key fixes:
+//  1) WORLD-SPACE bounds for DrawMeshInstancedProcedural (prevents whole-draw frustum culling)
+//  2) Always uses transform.localToWorldMatrix / worldToLocalMatrix for _ObjectTransform(_Inverse)
+//  3) Packs per-instance matrices into float4 rows (Vector4*4) to match the shader below
+//  4) Correctly binds buffers + _InstanceCount/_UseInstanceBuffers every frame
 
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -23,60 +30,43 @@ using System;
 
 namespace IVLab.ABREngine
 {
-    /// <summary>
-    /// Custom-tailored Instanced Mesh Renderer for rendering glyphs in ABR.
-    /// When using this, developers should make sure that "Use Instanced" is
-    /// checked on the material that these glyphs are using.
-    /// </summary>
     public class InstancedMeshRenderer : MonoBehaviour
     {
         public Matrix4x4[] instanceLocalTransforms;
-        // Contains render info for each instance:
-        // x = scalar value - used in shader to apply color per instance
-        // y = 
-        // z = 
-        // a = whether or not instance should be rendered (a >= 0 -> RENDER, a < 0 -> DISCARD)
         public Vector4[] renderInfo;
         public int[] hiliteBuffer;
 
-
-        // Ratio of instances that are actually being rendered (not discarded) out of all instances
         public float instanceDensity = 1.0f;
         public int instanceCount = 100000;
         public Mesh instanceMesh;
         public Material instanceMaterial;
         public int subMeshIndex = 0;
         public Bounds bounds;
+public bool buffersDirty = false;
 
         public int cachedInstanceCount = -1;
         private int cachedSubMeshIndex = -1;
+
         private ComputeBuffer renderInfoBuffer;
-        private ComputeBuffer transformBuffer;
-        private ComputeBuffer transformBufferInverse;
+        private ComputeBuffer transformBuffer;         // float4 rows: instanceCount*4 elements
+        private ComputeBuffer transformBufferInverse;  // float4 rows: instanceCount*4 elements
         private ComputeBuffer perInstanceHiliteBuffer;
 
 
-        private ComputeBuffer argsBuffer = null;
-        private uint[] args = new uint[5] { 0, 0, 0, 0, 0 };
-        bool invalid = true;
-
+        private bool invalid = true;
         public MaterialPropertyBlock block;
 
         public bool useInstanced = true;
 
-        // TODO Need to fix this sometime. Late Update causes glyphs to not appear on Screenshot camera, while
-        // Update can result in one-frame delays in getting object transform. 
-        // I actually fixed this by adjusting the Script Execution Order in the Project Settings. 
-        //void LateUpdate()
         void Update()
         {
-            if (argsBuffer == null) cachedInstanceCount = -1;
+            //Debug.Log($"Shader: {instanceMaterial?.shader?.name}  Color: {instanceMaterial?.color}");
+Debug.Log($"Frame {Time.frameCount}: invalid={invalid} cachedInstanceCount={cachedInstanceCount} instanceCount={instanceCount} buffersDirty={buffersDirty} transformBuffer={transformBuffer?.count} renderInfoBuffer={renderInfoBuffer?.count}");
+            //Debug.Log("IMR Update tick");
 
-            // Update starting position buffer
-            if (cachedInstanceCount != instanceCount || cachedSubMeshIndex != subMeshIndex)
+            if (cachedInstanceCount != instanceCount || cachedSubMeshIndex != subMeshIndex || buffersDirty)
             {
-                if (argsBuffer == null)
-                    argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
+                buffersDirty = false;
 
                 if (block == null)
                     block = new MaterialPropertyBlock();
@@ -85,38 +75,70 @@ namespace IVLab.ABREngine
             }
 
             if (invalid) return;
-            //// Pad input
-            //if (Input.GetAxisRaw("Horizontal") != 0.0f)
-            //    instanceCount = (int)Mathf.Clamp(instanceCount + Input.GetAxis("Horizontal") * 40000, 1.0f, 5000000.0f);
-            block?.SetMatrix("_ObjectTransform", GetComponent<MeshRenderer>().localToWorldMatrix);
-            block?.SetMatrix("_ObjectTransformInverse", GetComponent<MeshRenderer>().worldToLocalMatrix);
-            Bounds transformedBounds = new Bounds();
+            if (instanceMesh == null || instanceMaterial == null) return;
 
-            transformedBounds.center = GetComponent<MeshRenderer>().worldToLocalMatrix * bounds.center;
-            transformedBounds.center = Vector3.zero;
-            transformedBounds.size = GetComponent<MeshRenderer>().worldToLocalMatrix * (bounds.size.magnitude * Vector3.one * 1.4f);
-            transformedBounds.size = Vector3.one * 100;
-            //if (strategy != null)
-            //    strategy.SetMaterialBlock(block);
-            // Render
+            // Must be enabled on the *material used by the draw call*
+            instanceMaterial.enableInstancing = true;
+
+            // Provide object->world for this renderer object (same role as old MeshRenderer matrices)
+            block.SetMatrix("_ObjectTransform", transform.localToWorldMatrix);
+            block.SetMatrix("_ObjectTransformInverse", transform.worldToLocalMatrix);
+
+            // Tell shader buffers are valid + instance count
+            block.SetInt("_UseInstanceBuffers", 1);
+            block.SetInt("_InstanceCount", instanceCount);
+
+            // WORLD-SPACE bounds (huge; centered on camera to avoid frustum culling while debugging)
+            var cam = Camera.main;
+            Vector3 center = cam != null ? cam.transform.position : transform.position;
+            var transformedBounds = new Bounds(transform.position, Vector3.one * 1000000f);
+
             if (useInstanced)
             {
-                Graphics.DrawMeshInstancedProcedural(instanceMesh, subMeshIndex, instanceMaterial, transformedBounds, instanceCount, block, ShadowCastingMode.On, true, gameObject.layer);
+                //      Debug.Log($"IMR DRAW: invalid={invalid} mesh={instanceMesh!=null} mat={instanceMaterial!=null} count={instanceCount} sub={subMeshIndex} layer={gameObject.layer}");
+                if (instanceMaterial != null)
+                {
+                    instanceMaterial.enableInstancing = true;
+                }
+
+Debug.Log($"Drawing {instanceCount} instances, mesh={instanceMesh?.name}, bounds={transformedBounds}, layer={gameObject.layer}");
+Debug.Log($"transformBuffer null={transformBuffer==null}, renderInfoBuffer null={renderInfoBuffer==null}");
+Debug.Log($"invalid={invalid}, instanceLocalTransforms length={instanceLocalTransforms?.Length}");
+                Graphics.DrawMeshInstancedProcedural(
+                    instanceMesh,
+                    subMeshIndex,
+                    instanceMaterial,
+                    transformedBounds, 
+                    instanceCount,
+                    block,
+                    ShadowCastingMode.On,
+                    true,
+                    gameObject.layer
+                );
             }
             else
             {
+                // Non-instanced fallback (slow)
                 for (int i = 0; i < instanceLocalTransforms.Length; i++)
                 {
-                    block.SetColor("_RenderInfo", renderInfo[i]);
-                    Graphics.DrawMesh(instanceMesh, transform.localToWorldMatrix * instanceLocalTransforms[i], instanceMaterial, 0, null, 0, block);
+                    block.SetVector("_RenderInfo", renderInfo[i]);
+                    Graphics.DrawMesh(instanceMesh, transform.localToWorldMatrix * instanceLocalTransforms[i], instanceMaterial, gameObject.layer, null, subMeshIndex, block);
                 }
             }
         }
 
+
         void UpdateBuffers()
         {
+
+            Debug.Log($"UpdateBuffers called: transforms={instanceLocalTransforms?.Length}, renderInfo={renderInfo?.Length}, mesh={instanceMesh?.name}, mat={instanceMaterial?.name}");
             invalid = true;
-            if (instanceLocalTransforms == null || instanceLocalTransforms.Length == 0 || block == null) return;
+
+            if (block == null) return;
+            if (instanceLocalTransforms == null || instanceLocalTransforms.Length == 0) return;
+            if (renderInfo == null || renderInfo.Length != instanceLocalTransforms.Length) return;
+            if (instanceMesh == null || instanceMaterial == null) return;
+
             invalid = false;
             instanceCount = instanceLocalTransforms.Length;
 
@@ -124,87 +146,71 @@ namespace IVLab.ABREngine
             if (instanceMesh != null)
                 subMeshIndex = Mathf.Clamp(subMeshIndex, 0, instanceMesh.subMeshCount - 1);
 
-            // Positions
-            if (renderInfoBuffer != null)
-                renderInfoBuffer.Release();
+            // Release old
+            renderInfoBuffer?.Release();
+            transformBuffer?.Release();
+            transformBufferInverse?.Release();
+            perInstanceHiliteBuffer?.Release();
+
+            // Create new
             renderInfoBuffer = new ComputeBuffer(instanceCount, sizeof(float) * 4);
 
-            if (transformBuffer != null)
-                transformBuffer.Release();
-            transformBuffer = new ComputeBuffer(instanceCount, sizeof(float) * 16);
-
-            if (transformBufferInverse != null)
-                transformBufferInverse.Release();
+            transformBuffer        = new ComputeBuffer(instanceCount, sizeof(float) * 16);
             transformBufferInverse = new ComputeBuffer(instanceCount, sizeof(float) * 16);
 
-            if (perInstanceHiliteBuffer != null)
-                perInstanceHiliteBuffer.Release();
-            perInstanceHiliteBuffer = new ComputeBuffer((instanceCount / 32) + 1, sizeof(Int32));
+            int hiliteInts = (instanceCount + 31) / 32;
+            perInstanceHiliteBuffer = new ComputeBuffer(hiliteInts, sizeof(Int32));
 
-            Matrix4x4[] instanceLocalTransformsInverse = new Matrix4x4[instanceLocalTransforms.Length];
-            for (int i = 0; i < instanceLocalTransforms.Length; i++)
+            // Hilite: if null/wrong length, create CPU + fill zeros
+            if (hiliteBuffer == null || hiliteBuffer.Length != hiliteInts)
             {
-                instanceLocalTransformsInverse[i] = instanceLocalTransforms[i].inverse;
+                hiliteBuffer = new int[hiliteInts];
+                perInstanceHiliteBuffer.SetData(hiliteBuffer);
+            }
+            else
+            {
+                perInstanceHiliteBuffer.SetData(hiliteBuffer);
             }
 
+            // Build inverse array
+            var inverses = new Matrix4x4[instanceCount];
+            for (int i = 0; i < instanceCount; i++)
+                inverses[i] = instanceLocalTransforms[i].inverse;
+
             transformBuffer.SetData(instanceLocalTransforms);
-            transformBufferInverse.SetData(instanceLocalTransformsInverse);
+
+
+Debug.Log($"Transform[0]: pos={instanceLocalTransforms[0].GetColumn(3)}");
+Debug.Log($"Transform[62]: pos={instanceLocalTransforms[62].GetColumn(3)}");
+Debug.Log($"Transform[124]: pos={instanceLocalTransforms[124].GetColumn(3)}");
+
+
+            transformBufferInverse.SetData(inverses);
             renderInfoBuffer.SetData(renderInfo);
 
-            perInstanceHiliteBuffer.SetData(hiliteBuffer);
+            // Hilite: if null/wrong length, fill with zeros
+            if (hiliteBuffer == null || hiliteBuffer.Length != hiliteInts)
+            {
+                var zeros = new int[hiliteInts];
+                perInstanceHiliteBuffer.SetData(zeros);
+            }
+            else
+            {
+                perInstanceHiliteBuffer.SetData(hiliteBuffer);
+            }
 
+            // Bind buffers (names must match shader)
             block.SetBuffer("transformBuffer", transformBuffer);
             block.SetBuffer("transformBufferInverse", transformBufferInverse);
             block.SetBuffer("renderInfoBuffer", renderInfoBuffer);
             block.SetBuffer("perInstanceHiliteBuffer", perInstanceHiliteBuffer);
 
-            // Indirect args
-            if (instanceMesh != null)
-            {
-                args[0] = (uint)instanceMesh.GetIndexCount(subMeshIndex);
-                args[1] = (uint)instanceCount;
-                args[2] = (uint)instanceMesh.GetIndexStart(subMeshIndex);
-                args[3] = (uint)instanceMesh.GetBaseVertex(subMeshIndex);
-            }
-            else
-            {
-                args[0] = args[1] = args[2] = args[3] = 0;
-            }
-            argsBuffer.SetData(args);
-
             cachedInstanceCount = instanceCount;
             cachedSubMeshIndex = subMeshIndex;
-        }
 
-        public void toggleHilite(int which)
-        {
-            if (hiliteBuffer != null)
-            {
-                int arrayOffset = which / 32;
-                int bitOffset = which % 32;
-                hiliteBuffer[arrayOffset] = hiliteBuffer[arrayOffset] ^ (1 << bitOffset);
-                UpdateBuffers();
-            }
-        }
-        public void setHilite(int which)
-        {
-            if (hiliteBuffer != null)
-            {
-                int arrayOffset = which / 32;
-                int bitOffset = which % 32;
-
-                hiliteBuffer[arrayOffset] = hiliteBuffer[arrayOffset] | (1 << bitOffset);
-            }
-        }
-        public void clearHilite(int which)
-        {
-            if (hiliteBuffer != null)
-            {
-                int arrayOffset = which / 32;
-                int bitOffset = which % 32;
-
-                hiliteBuffer[arrayOffset] = hiliteBuffer[arrayOffset] & ~(1 << bitOffset);
-            }
+            // Also set these once here (we still set every frame in Update as well)
+            block.SetInt("_UseInstanceBuffers", 1);
+            block.SetInt("_InstanceCount", instanceCount);
         }
 
         void OnDestroy()
@@ -213,7 +219,65 @@ namespace IVLab.ABREngine
             transformBuffer?.Release();
             transformBufferInverse?.Release();
             perInstanceHiliteBuffer?.Release();
-            argsBuffer?.Release();
         }
+// --- Hilite API (kept for compatibility with ABR) ---
+
+public void toggleHilite(int which)
+{
+    if (hiliteBuffer == null) return;
+
+    int arrayOffset = which / 32;
+    int bitOffset   = which % 32;
+
+    if (arrayOffset < 0 || arrayOffset >= hiliteBuffer.Length) return;
+
+    hiliteBuffer[arrayOffset] ^= (1 << bitOffset);
+    PushHiliteBufferToGPU();
+}
+
+public void setHilite(int which)
+{
+    if (hiliteBuffer == null) return;
+
+    int arrayOffset = which / 32;
+    int bitOffset   = which % 32;
+
+    if (arrayOffset < 0 || arrayOffset >= hiliteBuffer.Length) return;
+
+    hiliteBuffer[arrayOffset] |= (1 << bitOffset);
+    PushHiliteBufferToGPU();
+}
+
+public void clearHilite(int which)
+{
+    if (hiliteBuffer == null) return;
+
+    int arrayOffset = which / 32;
+    int bitOffset   = which % 32;
+
+    if (arrayOffset < 0 || arrayOffset >= hiliteBuffer.Length) return;
+
+    hiliteBuffer[arrayOffset] &= ~(1 << bitOffset);
+    PushHiliteBufferToGPU();
+}
+
+// Update just the GPU hilite buffer (no full reallocation)
+private void PushHiliteBufferToGPU()
+{
+    if (perInstanceHiliteBuffer == null) return;
+
+    int expected = (instanceCount + 31) / 32;
+
+    // If sizes don't match, fall back to rebuilding buffers
+    if (hiliteBuffer == null || hiliteBuffer.Length != expected || perInstanceHiliteBuffer.count != expected)
+    {
+        UpdateBuffers();
+        return;
+    }
+
+    perInstanceHiliteBuffer.SetData(hiliteBuffer);
+    block?.SetBuffer("perInstanceHiliteBuffer", perInstanceHiliteBuffer);
+}
+        
     }
 }

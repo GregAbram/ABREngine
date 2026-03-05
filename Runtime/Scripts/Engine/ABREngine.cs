@@ -339,7 +339,7 @@ namespace IVLab.ABREngine
         protected override void Awake()
         {
             if (! Config)
-                Config = new ABRConfig();
+                Config = ABRConfig.Instance;
                 
             Config.Setup();
 

@@ -19,6 +19,7 @@
 
 using System;
 using System.Reflection;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 
@@ -157,7 +158,7 @@ namespace IVLab.ABREngine
         /// </summary>
         public BooleanPrimitive forceOutlineColor;
 
-        protected override string[] MaterialNames { get; } = { "ABR_Glyphs", "ABR_GlyphsOutline" };
+        protected override string[] MaterialNames { get; } =  {"ABRGlyphOutlines"}; //{ "ABRGlyphs" }; //, "ABR_GlyphsOutline" };
         protected override string LayerName { get; } = "ABR_Glyph";
 
         protected float[] glyphMeshSizes;
@@ -380,6 +381,8 @@ namespace IVLab.ABREngine
                 {
                     mr = childRenderer.gameObject.AddComponent<MeshRenderer>();
                 }
+                //DEBUG
+                mr.enabled = false;
                 if (!childRenderer.TryGetComponent<InstancedMeshRenderer>(out imr))
                 {
                     imr = childRenderer.gameObject.AddComponent<InstancedMeshRenderer>();
@@ -395,12 +398,13 @@ namespace IVLab.ABREngine
                 imr.bounds = SSrenderData.bounds;
                 imr.instanceMaterial = ImpressionMaterials[0];
                 imr.block = new MaterialPropertyBlock();
-                imr.cachedInstanceCount = -1;
+                imr.buffersDirty = true;
             }                
         }
-
+ 
         public override void UpdateStyling(EncodedGameObject currentGameObject)
         {
+            Debug.Log($"UpdateStyling called frame {Time.frameCount}");
             // Default to using every transform in the data (re-populate and discard old transforms)
             var SSrenderData = RenderInfo as SimpleGlyphRenderInfo;
 

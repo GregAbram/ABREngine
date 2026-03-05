@@ -28,6 +28,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Schema;
 using System.Diagnostics.Tracing;
+using GluonGui.WorkspaceWindow.Views.WorkspaceExplorer.Explorer;
 
 namespace IVLab.ABREngine
 {
@@ -39,8 +40,31 @@ namespace IVLab.ABREngine
     [CreateAssetMenu(fileName = "ABRConfig", menuName = "ABR/ABR Configuration")]
     public class ABRConfig : ScriptableObject
     { 
-        /// Read config stuff in from a JSON file <summary>
-             
+
+        private static ABRConfig _instance;
+        public static ABRConfig Instance
+        {
+            get
+            {
+                if (_instance != null) return _instance;
+
+                // Load by type name, e.g., "GameSettings" -> Assets/Resources/GameSettings.asset
+                _instance = Resources.Load<ABRConfig>(typeof(ABRConfig).Name);
+
+                if (_instance == null)
+                {
+                    Debug.LogError(
+                        $"ScriptableSingleton<{typeof(ABRConfig).Name}>: No asset found in Resources.\n" +
+                        $"Create one via CreateAssetMenu and place it at:\n" +
+                        $"Assets/Resources/{typeof(ABRConfig).Name}.asset"
+                    );
+                }
+
+                return _instance;
+            }
+        }
+        bool IsInitialized = false;
+
         public string abr_root{get; set;} = null;
         
         [System.Serializable]
@@ -219,11 +243,11 @@ namespace IVLab.ABREngine
             overrideGroupToDataMatrices = new List<GroupToDataMatrixOverrideFields>();
         }
 
-
+ 
 // NOTE: tried doing this in the creator but the initialization 
 // with the values from the asset file happens after the ctor.
 
-        public void Setup()
+        public void Setup(string _abr_root = null)
         {
             Debug.Log("XX App dataPath: " +  Application.dataPath);
 
@@ -304,6 +328,9 @@ namespace IVLab.ABREngine
             }
 
             Debug.LogFormat("Using ABR Schema, version {0}", SchemaJson["properties"]["version"]["default"]);
+
+            if (_abr_root == null) 
+                abr_root = _abr_root;
 
             var args = System.Environment.GetCommandLineArgs();
             for (var i = 1; i < args.Length; i++)

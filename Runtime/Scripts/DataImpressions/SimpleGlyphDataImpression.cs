@@ -158,7 +158,7 @@ namespace IVLab.ABREngine
         /// </summary>
         public BooleanPrimitive forceOutlineColor;
 
-        protected override string[] MaterialNames { get; } =  {"ABRGlyphOutlines"}; //{ "ABRGlyphs" }; //, "ABR_GlyphsOutline" };
+        protected override string[] MaterialNames { get; } = { "ABRGlyphs", "ABRGlyphOutlines" };
         protected override string LayerName { get; } = "ABR_Glyph";
 
         protected float[] glyphMeshSizes;
@@ -405,6 +405,7 @@ namespace IVLab.ABREngine
         public override void UpdateStyling(EncodedGameObject currentGameObject)
         {
             Debug.Log($"UpdateStyling called frame {Time.frameCount}");
+
             // Default to using every transform in the data (re-populate and discard old transforms)
             var SSrenderData = RenderInfo as SimpleGlyphRenderInfo;
 
@@ -420,21 +421,22 @@ namespace IVLab.ABREngine
 
             for (int glyphIndex = 0; glyphIndex < renderers.transform.childCount; glyphIndex++)
             {
-                // Exit immediately if the game object or instanced mesh renderer relevant to this
+                 // Exit immediately if the game object or instanced mesh renderer relevant to this
                 // impression do not yet exist
                 InstancedMeshRenderer imr = renderers?.transform.GetChild(glyphIndex).GetComponent<InstancedMeshRenderer>();
                 if (imr == null)
-                    continue;
+                    continue;                
+                    
+                Debug.Log($"showOutline={showOutline?.Value} ImpressionMaterials.Length={ImpressionMaterials.Length}");
+                Debug.Log($"imr.instanceMaterial={imr.instanceMaterial?.name} imr.outlineMaterial={imr.outlineMaterial?.name}");
 
                 imr.instanceLocalTransforms = SSrenderData.transforms;
                 imr.renderInfo = SSrenderData.scalars;               
                 imr.hiliteBuffer = SSrenderData.hiliteFlags;
 
                 // Set up outline, if present
-                if (showOutline != null && showOutline.Value)
-                    imr.instanceMaterial = ImpressionMaterials[1];
-                else
-                    imr.instanceMaterial = ImpressionMaterials[0];
+                imr.instanceMaterial = ImpressionMaterials[0];
+                imr.outlineMaterial  = (showOutline != null && showOutline.Value) ? ImpressionMaterials[1] : null;
 
                 // Determine the number of points / glyphs via the number of transforms the
                 // instanced mesh renderer is currently tracking
@@ -487,11 +489,31 @@ namespace IVLab.ABREngine
                     // Sample number of glyphs based on density
                     int sampleSize = (int)(numPoints * glyphDensityOut);
                     SampleGlyphs(glyphRenderInfo, sampleSize);
+
+
                 }
                 // If the glyph density hasn't changed, use the previous sample of glyphs
                 else if (imr.renderInfo?.Length == glyphRenderInfo.Length)
                 {
                     glyphRenderInfo = imr.renderInfo;
+                }
+
+                if (colorVariable != null && colorVariable.IsPartOf(keyData))
+                {
+                    var colorScalars = colorVariable.GetArray(keyData);
+                    for (int i = 0; i < numPoints; i++)
+                    {
+                        glyphRenderInfo[i][0] = colorScalars[i];
+                    }
+                }
+
+                if (glyphVariable != null && glyphVariable.IsPartOf(keyData))
+                {
+                    var glyphScalars = glyphVariable.GetArray(keyData);
+                    for (int i = 0; i < numPoints; i++)
+                    {
+                        glyphRenderInfo[i][1] = glyphScalars[i];
+                    }
                 }
 
                 // Get keydata-specific range, if there is one
@@ -510,6 +532,10 @@ namespace IVLab.ABREngine
                         colorVariableMax = colorVariable.Range.max;
                     }
                 }
+
+Debug.Log($"renderInfo[0]: {glyphRenderInfo[0]}");
+Debug.Log($"colorVariableMin={colorVariableMin} colorVariableMax={colorVariableMax}");
+Debug.Log($"colormap null={colormap==null} gradient null={colormap?.GetColorGradient()==null}");
 
                 // Apply and pack scalar variables
                 // INDEX 0: Color
@@ -541,10 +567,11 @@ namespace IVLab.ABREngine
                 block.SetFloat("_ColorDataMax", colorVariableMax);
                 block.SetColor("_Color", ABREngine.Instance.Config.defaultColor);
                 block.SetColor("_OutlineColor", outlineColor);
-                block.SetFloat("_OutlineWidth", outlineWidth?.Value ?? 0.0f);
+                block.SetFloat("_OutlineWidth", outlineWidth?.Value ?? 0.02f);
                 block.SetInt("_ForceOutlineColor", (forceOutlineColor?.Value ?? false) ? 1 : 0);
                 block.SetColor("_HiliteColor" , ABREngine.Instance.Config.hiliteColor);                
-                
+                block.SetFloat("_OutlineWidth", 0.02f); // hardcoded for testing
+
 
                 if (colormap?.GetColorGradient() != null)
                 {

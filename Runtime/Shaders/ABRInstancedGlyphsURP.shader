@@ -77,7 +77,7 @@ Shader "ABR/InstancedGlyphs"
                 Varyings OUT = (Varyings)0;
                 UNITY_SETUP_INSTANCE_ID(IN);
                 UNITY_TRANSFER_INSTANCE_ID(IN, OUT);
-                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT); 
 
                 VertexPositionInputs posInputs    = GetVertexPositionInputs(IN.positionOS.xyz);
                 VertexNormalInputs   normalInputs = GetVertexNormalInputs(IN.normalOS, IN.tangentOS);
@@ -97,8 +97,7 @@ Shader "ABR/InstancedGlyphs"
             {
                 UNITY_SETUP_INSTANCE_ID(IN);
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(IN);
-
-                // Resolve render info
+      // Resolve render info
                 float4 renderInfo;
 #ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
                 uint instanceIndex  = unity_InstanceID / 32; 

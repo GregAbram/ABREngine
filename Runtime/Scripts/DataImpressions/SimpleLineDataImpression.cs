@@ -171,8 +171,8 @@ namespace IVLab.ABREngine
         public int[] hiliteBuffer;
         ComputeBuffer hiliteComputeBuffer = null;
 
-        protected override string[] MaterialNames { get; } = { "ABR_Ribbon" };
-        protected override string LayerName { get; } = "ABR_Line";
+        protected override string[] MaterialNames { get; } = { "ABRRibbon" };
+        protected override string LayerName { get; } = "ABRLine";
 
         /// <summary>
         ///     Construct a data impession with a given UUID. Note that this

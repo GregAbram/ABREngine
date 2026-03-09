@@ -173,7 +173,7 @@ namespace IVLab.ABREngine
         /// </summary>
         public BooleanPrimitive onlyOutline;
 
-        protected override string[] MaterialNames { get; } = { "ABRSurface", "ABR_SurfaceTransparent", "ABR_SurfaceOutlineOnly", "ABR_SurfaceOutline" };
+        protected override string[] MaterialNames { get; } = { "ABRSurfaceURP" }; //, "ABR_SurfaceTransparent", "ABR_SurfaceOutlineOnly", "ABR_SurfaceOutline" };
         protected override string LayerName { get; } = "ABR_Surface";
 
 

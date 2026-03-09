@@ -211,7 +211,7 @@ namespace IVLab.ABREngine
         {
             return Tags.Contains(tag);
         }
-
+ 
         public DataImpression() : this(Guid.NewGuid().ToString()) { }
 
         public virtual void ComputeGeometry() { }

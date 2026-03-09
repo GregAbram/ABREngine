@@ -173,7 +173,7 @@ namespace IVLab.ABREngine
         /// </summary>
         public BooleanPrimitive onlyOutline;
 
-        protected override string[] MaterialNames { get; } = { "ABRSurfaceURP" }; //, "ABR_SurfaceTransparent", "ABR_SurfaceOutlineOnly", "ABR_SurfaceOutline" };
+        protected override string[] MaterialNames { get; } = { "ABRSurface" }; //, "ABR_SurfaceTransparent", "ABR_SurfaceOutlineOnly", "ABR_SurfaceOutline" };
         protected override string LayerName { get; } = "ABR_Surface";
 
 
@@ -181,7 +181,7 @@ namespace IVLab.ABREngine
         private bool backFace = true;
 
         public bool hilite = false;
-
+ 
         /// <summary>
         ///     Construct a data impession with a given UUID. Note that this
         ///     will be called from ABRState and must assume that there's a

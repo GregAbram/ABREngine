@@ -1,4 +1,4 @@
-// ABR/SurfaceTextureURP
+// ABR/SurfaceTexture
 // URP port of your Built-in Surface shader (albedo-only) that:
 // - Uses vertex color.x as the “colormap variable” (vColor)
 // - Uses vertex color.y as the “pattern variable” (blend map lookup)
@@ -16,7 +16,7 @@
 // - Your original code computes “norm” from _PatternNormal but never uses it.
 //   This URP port keeps _PatternNormal sampling code commented where it was, but does not apply it.
 
-Shader "ABR/SurfaceTextureURP"
+Shader "ABR/SurfaceTexture"
 {
     Properties
     {

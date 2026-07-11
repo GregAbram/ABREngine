@@ -273,6 +273,23 @@ namespace IVLab.ABREngine
         /// </summary>
         public Transform ABRTransform { get; private set; }
 
+        /// <summary>
+        /// Local-space bounds of the box that all data should be squished
+        /// into. The ABREngine component is expected to live on a box/cube
+        /// GameObject; this box's own Transform (position/rotation/scale)
+        /// then places, orients, and sizes the whole visualization in the
+        /// scene via ordinary Unity parenting. Falls back to a unit cube if
+        /// no mesh is present.
+        /// </summary>
+        public Bounds ContainerBounds
+        {
+            get
+            {
+                Mesh mesh = GetComponent<MeshFilter>()?.sharedMesh;
+                return mesh != null ? mesh.bounds : new Bounds(Vector3.zero, Vector3.one);
+            }
+        }
+
 
         /// <summary>
         /// Client for internal application usage to make web requests.
@@ -340,12 +357,23 @@ namespace IVLab.ABREngine
         {
             if (! Config)
                 Config = ABRConfig.Instance;
+                 
+            if (! Config.IsInitialized)
+                Config.Setup();
                 
-            Config.Setup();
-
             // Enable depth texture write on main cam so that volume rendering
             // functions correctly
             Camera.main.depthTextureMode = DepthTextureMode.Depth;
+
+            // This GameObject is expected to be a box/cube that the scene
+            // author uses to visually place and size the data container in
+            // the Editor. Hide (but don't remove) its visual/physical
+            // presence at runtime so it doesn't show up as a big cube during
+            // Play.
+            MeshRenderer boxRenderer = GetComponent<MeshRenderer>();
+            if (boxRenderer != null) boxRenderer.enabled = false;
+            Collider boxCollider = GetComponent<Collider>();
+            if (boxCollider != null) boxCollider.enabled = false;
 
             UnityThreadScheduler.GetInstance();
             persistentDataPath = Application.persistentDataPath;

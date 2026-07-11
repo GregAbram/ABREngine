@@ -200,18 +200,18 @@ namespace IVLab.ABREngine
                 else
                     num_points = bdh.dimensions[0] * bdh.dimensions[1] * bdh.dimensions[2];
 
-                Vector3 center = ABREngine.Instance.Config.center;
-                float scale = (float)ABREngine.Instance.Config.scale;
-
-                for (int i = 0; i < 3 * bdh.num_points;)
-                {
-                    vertices[i] = (vertices[i] - center.x) * scale;
-                    i++;
-                    vertices[i] = (vertices[i] - center.y) * scale;
-                    i++;
-                    vertices[i] = (vertices[i] - center.z) * scale;
-                    i++;
-                }
+                // NOTE: vertices are intentionally left in their native
+                // data-space coordinates here. Squishing data to fit a
+                // container is handled uniformly per-dataset at render time
+                // via DataImpressionGroup.GroupToDataMatrix (see
+                // DataImpressionGroup.RecalculateBounds), driven by the
+                // dataset's true data-space bounds (Dataset.DataSpaceBounds,
+                // loaded from project.json). Applying a transform to raw
+                // vertices here, per key data object, would be inconsistent
+                // with that: different key data derived from the same
+                // dataset (e.g. a contour and a slice) can have very
+                // different individual extents and must not be normalized
+                // independently.
 
                 index_array = new int[bdh.num_cell_indices];
                 nbytes = bdh.num_cell_indices * sizeof(int);

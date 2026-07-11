@@ -118,9 +118,10 @@ namespace IVLab.ABREngine
         {
             SocketTextData ptd = await GetSocketLabelAsync(client, cancelToken);
 
-            if (ptd.tag == "series")
-                Debug.Log("Series");
-                
+            // "update" is a bare control message (flush/render barrier) with
+            // nothing following it. Every other tag (e.g. "keydata",
+            // "projectinfo") is followed by a label, a json header, and
+            // (possibly zero-length) binary data.
             if (ptd.tag != "update")
             {
                 ptd.label = await StreamMethods.ReadStringFromStreamAsync(client.GetStream(), cancelToken);
@@ -156,7 +157,27 @@ namespace IVLab.ABREngine
 
                 SocketTextData textData = await textDataTask;
                 Debug.Log("Accepting data stream for label \"" + textData.label + "\"");
-                if (textData.tag != "update")
+                if (textData.tag == "projectinfo")
+                {
+                    if (textData.label != "")
+                    {
+                        try
+                        {
+                            ProjectInfo info = JsonUtility.FromJson<ProjectInfo>(textData.json);
+                            ABREngine.Instance.Data.SaveProjectInfo(textData.label, info.bounds);
+
+                            await StreamMethods.WriteStringToStreamAsync(client.GetStream(), "ok", cancelToken);
+                            Debug.Log("Saved project info for \"" + textData.label + "\"");
+
+                            await UnityThreadScheduler.Instance.RunMainThreadWork(() => ABREngine.Instance.Render());
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogError(e);
+                        }
+                    }
+                }
+                else if (textData.tag != "update")
                 {
                     if (textData.label != "")
                     {

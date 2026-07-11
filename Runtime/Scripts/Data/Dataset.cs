@@ -110,7 +110,6 @@ namespace IVLab.ABREngine
             RawDataset rawDataset;
             if (ABREngine.Instance.Data.TryGetRawDataset(keyData.Path, out rawDataset))
             {
-                Bounds originalBounds = rawDataset.bounds;
                 keyDataObjects[keyData.Path] = keyData;
             }
         }

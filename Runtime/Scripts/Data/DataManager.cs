@@ -343,6 +343,16 @@ namespace IVLab.ABREngine
                 if (!TryGetDataset(datasetPath, out dataset))
                 {
                     dataset = new Dataset(datasetPath, ABREngine.Instance.ABRTransform);
+
+                    // Seed the dataset's true data-space bounds from
+                    // project.json, if the upstream source has provided one.
+                    // Without it, DataImpressionGroup falls back to the
+                    // deprecated manual ABRConfig center/scale override.
+                    Bounds projectBounds;
+                    if (ProjectInfo.TryLoad(Path.Combine(this.appDataPath, datasetPath), out projectBounds))
+                    {
+                        dataset.DataSpaceBounds = projectBounds;
+                    }
                 }
 
                 datasets[datasetPath] = dataset;
@@ -367,6 +377,33 @@ namespace IVLab.ABREngine
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Save (or update) project.json for a dataset -- the true data-space
+        /// bounds of the original, top-level dataset, as opposed to the
+        /// bounds of any one key data object derived from it. Called when a
+        /// `"projectinfo"` message arrives over the socket. If the dataset is
+        /// already loaded, its bounds are updated in-memory immediately (and
+        /// its data impressions marked dirty) rather than only taking effect
+        /// on next load.
+        /// </summary>
+        public void SaveProjectInfo(string datasetPath, Bounds bounds)
+        {
+            ProjectInfo.Save(Path.Combine(this.appDataPath, datasetPath), bounds);
+
+            Dataset dataset;
+            if (TryGetDataset(datasetPath, out dataset))
+            {
+                dataset.DataSpaceBounds = bounds;
+                foreach (string keyDataPath in dataset.GetAllKeyData().Keys)
+                {
+                    foreach (IDataImpression impression in ABREngine.Instance.GetDataImpressions(keyDataPath))
+                    {
+                        impression.RenderHints.DataChanged = true;
+                    }
+                }
+            }
         }
 
         /// <summary>

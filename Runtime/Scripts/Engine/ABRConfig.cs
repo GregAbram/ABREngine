@@ -39,7 +39,6 @@ namespace IVLab.ABREngine
     [CreateAssetMenu(fileName = "ABRConfig", menuName = "ABR/ABR Configuration")]
     public class ABRConfig : ScriptableObject
     { 
-
         private static ABRConfig _instance;
         public static ABRConfig Instance
         {
@@ -48,7 +47,8 @@ namespace IVLab.ABREngine
                 if (_instance != null) return _instance;
 
                 // Load by type name, e.g., "GameSettings" -> Assets/Resources/GameSettings.asset
-                _instance = Resources.Load<ABRConfig>(typeof(ABRConfig).Name);
+                //_instance = Resources.Load<ABRConfig>(typeof(ABRConfig).Name);
+                _instance = ScriptableObject.CreateInstance<ABRConfig>();
 
                 if (_instance == null)
                 {
@@ -62,7 +62,7 @@ namespace IVLab.ABREngine
                 return _instance;
             }
         }
-        bool IsInitialized = false;
+        public bool IsInitialized {get; set;} = false;
 
         public string abr_root{get; set;} = null;
         
@@ -179,8 +179,20 @@ namespace IVLab.ABREngine
 
         public RemoteDataSource[] remotes;
 
+        /// <summary>
+        /// Deprecated manual override for scaling incoming data, used only
+        /// as a fallback when a dataset has no project.json (see <see
+        /// cref="ProjectInfo"/>) to supply its true data-space bounds.
+        /// Applies a uniform scale and translation
+        /// (<c>(vertex - center) * scale</c>) to the whole
+        /// DataImpressionGroup. Prefer sending project.json from the data
+        /// source instead of configuring this by hand.
+        /// </summary>
+        [Obsolete("Deprecated fallback for when a dataset has no project.json. Prefer having the data source provide project.json (see ProjectInfo).")]
         public double scale;
+        [Obsolete("Deprecated fallback for when a dataset has no project.json. Prefer having the data source provide project.json (see ProjectInfo).")]
         public Vector3 center;
+        [Obsolete("Unused: rotation is no longer applied at the data level; rotate the box GameObject the ABREngine component lives on instead.")]
         public Vector3 rotation;
 
         /// <summary>
@@ -328,7 +340,7 @@ namespace IVLab.ABREngine
 
             Debug.LogFormat("Using ABR Schema, version {0}", SchemaJson["properties"]["version"]["default"]);
 
-            if (_abr_root == null) 
+            if (_abr_root != null) 
                 abr_root = _abr_root;
 
             var args = System.Environment.GetCommandLineArgs();
@@ -412,6 +424,8 @@ namespace IVLab.ABREngine
                 _ = e;
                 Debug.Log("No external config file");
             }
+
+            IsInitialized = true;
 
         }
 

@@ -349,93 +349,69 @@ namespace IVLab.ABREngine
         }
 
         /// <summary>
-        ///     From scratch, recalculate the bounds of this DataImpressionGroup. Start with
-        ///     a zero-size bounding box and expand until it encapsulates all
-        ///     datasets.
+        ///     Recalculate the transform that squishes this group's dataset into
+        ///     its container (the box GameObject that <see cref="ABREngine"/> lives
+        ///     on). Unlike the old auto-container behavior, this does NOT grow the
+        ///     data space bounds from whatever key data happen to be loaded --
+        ///     doing so would make unrelated key data (e.g. a contour and a slice
+        ///     taken from the same original dataset) land inconsistently relative
+        ///     to each other, since each may only cover part of the original
+        ///     extent. Instead, the authoritative data space bounds come from
+        ///     <see cref="Dataset.DataSpaceBounds"/>, populated from that dataset's
+        ///     project.json (see <see cref="ProjectInfo"/>).
         /// </summary>
         /// <returns>
         /// Returns a boolean whether or not the bounds have changed since last recalculation
         /// </returns>
         public bool RecalculateBounds()
         {
-            GroupToDataMatrix = Matrix4x4.identity;
-            return false;
-#if false
-
-            // If user specified to not use data container, skip the rest and
-            // don't auto-calculate new bounds
-            if (!ABREngine.Instance.Config.useAutoDataContainer)
-            {
-                GroupToDataMatrix = Matrix4x4.identity;
-                return false;
-            }
-
             float currentBoundsSize = GroupBounds.size.magnitude;
-            ResetBoundsAndTransformation();
+            GroupContainer = ABREngine.Instance.ContainerBounds;
 
             Dataset ds = GetDataset();
-            if (ds != null)
+            if (ds == null)
             {
-                // Look to see if this group's unity to data matrix has been
-                // overwritten... if so, skip the rest and don't auto-calculate
-                // new bounds
-                var overrideMatrix = ABREngine.Instance.Config.overrideGroupToDataMatrices?.Find(
-                    o => o.groupUuid == this.Uuid.ToString() || o.groupName == this.Name || o.datasetPath == ds.Path
-                );
-                if (overrideMatrix != null)
-                {
-                    GroupToDataMatrix = overrideMatrix.groupToDataMatrix;
-                    return false;
-                }
+                GroupToDataMatrix = Matrix4x4.identity;
+                GroupBounds = GroupContainer;
+                return Mathf.Abs(currentBoundsSize - GroupBounds.size.magnitude) > float.Epsilon;
+            }
 
-                // Build a list of keydata that are actually being used
-                List<string> activeKeyDataPaths = new List<string>();
-                foreach (IDataImpression impression in GetDataImpressions().Values)
-                {
-                    string keyDataPath = impression.InputIndexer.GetInputValue("Key Data")?.GetRawABRInput().inputValue;
-                    if (keyDataPath != null && DataPath.GetDatasetPath(keyDataPath) == ds.Path)
-                    {
-                        activeKeyDataPaths.Add(keyDataPath);
-                    }
-                }
+            // Manual per-group override always wins, regardless of data space bounds
+            var overrideMatrix = ABREngine.Instance.Config.overrideGroupToDataMatrices?.Find(
+                o => o.groupUuid == this.Uuid.ToString() || o.groupName == this.Name || o.datasetPath == ds.Path
+            );
+            if (overrideMatrix != null)
+            {
+                GroupToDataMatrix = overrideMatrix.groupToDataMatrix;
+                GroupBounds = GroupContainer;
+                return Mathf.Abs(currentBoundsSize - GroupBounds.size.magnitude) > float.Epsilon;
+            }
 
-                foreach (IKeyData keyData in ds.GetAllKeyData().Values)
+            if (ds.DataSpaceBounds.size.sqrMagnitude > float.Epsilon)
+            {
+                NormalizeWithinBounds.Normalize(GroupContainer, ds.DataSpaceBounds, out GroupToDataMatrix, out GroupBounds);
+            }
+            else
+            {
+                // No project.json available for this dataset. Fall back to the
+                // deprecated manual ABRConfig center/scale override, if one was
+                // provided; otherwise pass data straight through.
+                ABRConfig config = ABREngine.Instance.Config;
+                if (config.scale > float.Epsilon)
                 {
-                    if (!activeKeyDataPaths.Contains(keyData.Path))
-                    {
-                        continue;
-                    }
-                    RawDataset rawDataset;
-                    if (!ABREngine.Instance.Data.TryGetRawDataset(keyData.Path, out rawDataset))
-                    {
-                        continue;
-                    }
-                    Bounds originalBounds = rawDataset.bounds;
-
-                    if (ds.DataSpaceBounds.size.magnitude <= float.Epsilon)
-                    {
-                        // If the size is zero (first keyData), then start with its
-                        // bounds (make sure to not assume we're including (0, 0, 0) in
-                        // the bounds)
-                        ds.DataSpaceBounds = originalBounds;
-                        NormalizeWithinBounds.Normalize(GroupContainer, originalBounds, out GroupToDataMatrix, out GroupBounds);
-                    }
-                    else
-                    {
-                        NormalizeWithinBounds.NormalizeAndExpand(
-                            GroupContainer,
-                            originalBounds,
-                            ref GroupBounds,
-                            ref GroupToDataMatrix,
-                            ref ds.DataSpaceBounds
-                        );
-                    }
+                    GroupToDataMatrix =
+                        Matrix4x4.Scale(Vector3.one * (float)config.scale) *
+                        Matrix4x4.Translate(-config.center);
                 }
+                else
+                {
+                    GroupToDataMatrix = Matrix4x4.identity;
+                }
+                GroupBounds = GroupContainer;
             }
 
             return Mathf.Abs(currentBoundsSize - GroupBounds.size.magnitude) > float.Epsilon;
-#endif        
-}
+        }
 
         /// <summary>
         /// Render every data impression inside this data impression group. Three levels of "update" are provided for each data impression (see <see cref="RenderHints"/> for more information):

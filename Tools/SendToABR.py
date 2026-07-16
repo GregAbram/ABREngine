@@ -9,40 +9,28 @@ import os, sys, json
 class Send2ABR(VTKPythonAlgorithmBase):
     def __init__(self):
         VTKPythonAlgorithmBase.__init__(self, nInputPorts=1, nOutputPorts=1, outputType="vtkUnstructuredGrid")
-        self.institution = 'GDA' # 'local'
-        self.project = 'test' # 'test'
         self.keydata = 'key' # 'keydata'
-        self.host  = 'localhost'
-        self.port  = 1900
         self.logfile = ""
 
     def FillInputPortInformation(self, port, info):
         info.Set(self.INPUT_REQUIRED_DATA_TYPE(), "vtkDataSet")
         return 1
 
-    # @smproperty.stringvector(name="Host", default_values="localhost")
-    @smproperty.stringvector(name="Host")
-    def SetHost(self, value):
-        self.host = value
-        self.Modified()
-        return
-
-    @smproperty.intvector(name="Port", default_values=1900)
-    def SetPort(self, value):
-        self.port = value
-        self.Modified()
-
-    @smproperty.stringvector(name="Institution", default_values="GDA")
-    def SetInstitution(self, value):
-        self.institution = value
-        self.Modified()
-        return
-
-    @smproperty.stringvector(name="Project", default_values="test")
-    def SetProject(self, value):
-        self.project = value
-        self.Modified()
-        return
+    def _ConnectionInfo(self):
+        """(host, port, institution, project) -- taken from whichever
+        Send2ABRProjectInfo last ran in this ParaView session (stashed on
+        the servermanager module, the same ad hoc session-state pattern
+        this file already uses for sm.UnitySyncer/UnityFrame/UnityModified).
+        Send2ABR has no properties of its own for these -- a visualization
+        is assumed to have a single Send2ABRProjectInfo, configured once,
+        that every Send2ABR filter in it reads from. Returns None if no
+        Send2ABRProjectInfo has run yet in this session.
+        """
+        from paraview import servermanager as sm
+        info = getattr(sm, 'ABRProjectInfo', None)
+        if info is None:
+            return None
+        return info['host'], info['port'], info['institution'], info['project']
 
     @smproperty.stringvector(name="KeyData", default_values="key")
     def SetKeyData(self, value):
@@ -117,10 +105,16 @@ class Send2ABR(VTKPythonAlgorithmBase):
               sm.UnityModified = 0
               import socket
               sm.UnityFrame = sm.UnityFrame + 1
+              connection_info = self._ConnectionInfo()
+              if connection_info is None:
+                print('USyncer: no Send2ABRProjectInfo has run yet in this session')
+                return
+              cb_host, cb_port, _cb_inst, _cb_proj = connection_info
+
               s = socket.socket()
               try:
-                print("tring to connect: %s %d" % (self.host, self.port))
-                s.connect((self.host, self.port))
+                print("tring to connect: %s %d" % (cb_host, cb_port))
+                s.connect((cb_host, cb_port))
               except:
                 print('USyncer unable to connect')
                 return
@@ -187,10 +181,16 @@ class Send2ABR(VTKPythonAlgorithmBase):
         num_points = ug.GetNumberOfPoints()
         num_cells = ug.GetNumberOfCells()
 
+        connection_info = self._ConnectionInfo()
+        if connection_info is None:
+          print("Send2ABR: no Send2ABRProjectInfo has run yet in this session -- add one to the pipeline first")
+          return 0
+        host, port, institution, project = connection_info
+
         try:
-          print("trying to connect to %s at port %d" % (self.host, self.port))
+          print("trying to connect to %s at port %d" % (host, port))
           s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-          s.connect((self.host, self.port))
+          s.connect((host, port))
           print("connected")
         except:
           print('connection failed')
@@ -288,7 +288,7 @@ class Send2ABR(VTKPythonAlgorithmBase):
                 knt = knt - n
                 offset = offset + n
 
-            label = self.institution + '/' + self.project + '/KeyData/' + self.keydata
+            label = institution + '/' + project + '/KeyData/' + self.keydata
             print('sending to ', label)
             etag = 'keydata'.encode()
             elabel = label.encode()
@@ -346,7 +346,11 @@ class Send2ABRProjectInfo(VTKPythonAlgorithmBase):
     """
 
     def __init__(self):
-        VTKPythonAlgorithmBase.__init__(self, nInputPorts=1, nOutputPorts=1, outputType="vtkUnstructuredGrid")
+        # No fixed outputType here -- RequestDataObject (below) mirrors
+        # whatever concrete vtkDataSet subtype the input actually is onto
+        # the output, so this stays a cheap passthrough (no conversion) for
+        # any input, not just PolyData/UnstructuredGrid.
+        VTKPythonAlgorithmBase.__init__(self, nInputPorts=1, nOutputPorts=1, outputType="vtkDataSet")
         self.institution = 'GDA'
         self.project = 'test'
         self.host = 'localhost'
@@ -354,6 +358,16 @@ class Send2ABRProjectInfo(VTKPythonAlgorithmBase):
 
     def FillInputPortInformation(self, port, info):
         info.Set(self.INPUT_REQUIRED_DATA_TYPE(), "vtkDataSet")
+        return 1
+
+    def RequestDataObject(self, request, inInfoVec, outInfoVec):
+        import vtk
+        inp = self.GetInputData(inInfoVec, 0, 0)
+        outInfo = outInfoVec.GetInformationObject(0)
+        if inp is not None:
+            existing = outInfo.Get(vtk.vtkDataObject.DATA_OBJECT())
+            if existing is None or existing.GetClassName() != inp.GetClassName():
+                outInfo.Set(vtk.vtkDataObject.DATA_OBJECT(), inp.NewInstance())
         return 1
 
     @smproperty.stringvector(name="Host")
@@ -382,23 +396,31 @@ class Send2ABRProjectInfo(VTKPythonAlgorithmBase):
         import select
         import numpy as np
         import vtk
+        from paraview import servermanager as sm
 
-        outpt = vtk.vtkUnstructuredGrid.GetData(outInfoVec, 0)
-        ug = vtk.vtkUnstructuredGrid.GetData(inInfoVec[0], 0)
+        # Stash connection info for any Send2ABR filters in this
+        # visualization to pick up (see Send2ABR._ConnectionInfo), so
+        # Host/Port/Institution/Project only need to be configured here,
+        # once, assuming a single Send2ABRProjectInfo per visualization.
+        sm.ABRProjectInfo = {
+            'host': self.host,
+            'port': self.port,
+            'institution': self.institution,
+            'project': self.project,
+        }
 
-        if ug == None:
-            pd = vtk.vtkPolyData.GetData(inInfoVec[0], 0)
-            if pd != None:
-                af = vtk.vtkAppendFilter()
-                af.SetInputData(pd)
-                af.Update()
-                ug = af.GetOutput()
-                del af
-            else:
-                print("Can only handle PolyData and UnstructuredGrids")
-                return 0
+        # GetBounds() is defined on vtkDataSet itself and works directly on
+        # any subtype (PolyData, UnstructuredGrid, ImageData,
+        # StructuredGrid, RectilinearGrid, ...) -- no conversion needed, so
+        # a large structured/image dataset is never expanded into an
+        # unstructured grid just to compute its bounding box.
+        ds = self.GetInputData(inInfoVec, 0, 0)
+        if ds == None:
+            print("Send2ABRProjectInfo: no input dataset")
+            return 0
 
-        outpt.ShallowCopy(ug)
+        outpt = self.GetOutputData(outInfoVec, 0)
+        outpt.ShallowCopy(ds)
 
         def WaitForAck(skt):
             ack = b'none'
@@ -418,7 +440,7 @@ class Send2ABRProjectInfo(VTKPythonAlgorithmBase):
                     r = 0
             return 1 if ack == b'ok' else 0
 
-        b = np.array(ug.GetBounds())
+        b = np.array(ds.GetBounds())
         c = ((b[[1, 3, 5]] + b[[0, 2, 4]]) / 2.0).tolist()
         e = ((b[[1, 3, 5]] - b[[0, 2, 4]]) / 2.0).tolist()
         bounds = {'m_Center': {'x': c[0], 'y': c[1], 'z': -c[2]}, 'm_Extent': {'x': e[0], 'y': e[1], 'z': e[2]}}

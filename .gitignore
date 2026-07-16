@@ -3,3 +3,6 @@ Documentation~
 # Standalone DataStore console app build output
 DataStore/bin/
 DataStore/obj/
+
+# Python bytecode cache (e.g. from ParaView importing Tools/SendToABR.py)
+__pycache__/

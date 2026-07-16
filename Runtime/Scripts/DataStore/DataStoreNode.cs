@@ -18,6 +18,13 @@
 
 namespace IVLab.ABREngine.DataStore
 {
+    /// <summary>Address of another DataStore node to act as this one's upstream.</summary>
+    public class RemoteEndpoint
+    {
+        public string Host;
+        public int Port;
+    }
+
     public class DataStoreNodeConfig
     {
         /// <summary>Port to accept subscribe/listprojects/ingestion connections on.</summary>
@@ -26,9 +33,12 @@ namespace IVLab.ABREngine.DataStore
         /// <summary>Directory to persist projects under (created if missing).</summary>
         public string LocalStorageRoot;
 
-        // Reserved for a later phase: an optional upstream (host, port) to
-        // lazily subscribe through on a local cache miss. Phase 1 is
-        // single-node only, so there is nothing to configure here yet.
+        /// <summary>
+        /// Optional upstream DataStore to lazily subscribe through on a
+        /// local cache miss. Null (default) means this is a root node --
+        /// only ParaView or other direct pushes feed it.
+        /// </summary>
+        public RemoteEndpoint Upstream;
     }
 
     /// <summary>
@@ -47,6 +57,10 @@ namespace IVLab.ABREngine.DataStore
         {
             var store = new FilesystemProjectStore(config.LocalStorageRoot);
             Hub = new SubscriptionHub(store);
+            if (config.Upstream != null)
+            {
+                Hub.Upstream = new UpstreamLink(config.Upstream.Host, config.Upstream.Port, Hub);
+            }
             server = new DataStoreServer(config.ListenPort, Hub);
             server.Start();
         }

@@ -48,7 +48,7 @@ internal class Program
     private static void PrintUsage()
     {
         Console.Error.WriteLine("Usage:");
-        Console.Error.WriteLine("  DataStore serve <port> <storageRoot>");
+        Console.Error.WriteLine("  DataStore serve <port> <storageRoot> [upstreamHost upstreamPort]");
         Console.Error.WriteLine("  DataStore subscribe <host> <port> <projectPath>");
         Console.Error.WriteLine("  DataStore listprojects <host> <port>");
     }
@@ -62,9 +62,21 @@ internal class Program
         }
         string storageRoot = args[2];
 
+        RemoteEndpoint upstream = null;
+        if (args.Length >= 5)
+        {
+            if (!int.TryParse(args[4], out int upstreamPort))
+            {
+                PrintUsage();
+                return 1;
+            }
+            upstream = new RemoteEndpoint { Host = args[3], Port = upstreamPort };
+        }
+
         var node = new DataStoreNode();
-        node.Start(new DataStoreNodeConfig { ListenPort = port, LocalStorageRoot = storageRoot });
-        Console.WriteLine($"DataStore listening on port {port}, storing under \"{storageRoot}\". Press Ctrl+C to stop.");
+        node.Start(new DataStoreNodeConfig { ListenPort = port, LocalStorageRoot = storageRoot, Upstream = upstream });
+        string upstreamDesc = upstream != null ? $", upstream {upstream.Host}:{upstream.Port}" : "";
+        Console.WriteLine($"DataStore listening on port {port}, storing under \"{storageRoot}\"{upstreamDesc}. Press Ctrl+C to stop.");
 
         var stopSignal = new ManualResetEventSlim(false);
         Console.CancelKeyPress += (_, e) =>

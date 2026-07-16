@@ -59,10 +59,37 @@ namespace IVLab.ABREngine.DataStore
         public ILocalProjectStore Store => store;
 
         /// <summary>
+        /// This node's upstream, if any (null for a root node with no
+        /// upstream). Settable after construction since UpstreamLink itself
+        /// needs a reference back to this hub to ingest incoming frames.
+        /// </summary>
+        public UpstreamLink Upstream { get; set; }
+
+        /// <summary>
+        /// True if `projectPath` is available locally already, or becomes
+        /// available by lazily subscribing through Upstream (blocking until
+        /// that subscribe's initial replay completes, or fails). False if
+        /// it's not local and there's no upstream, or the upstream doesn't
+        /// have it either.
+        /// </summary>
+        public async Task<bool> EnsureAvailableAsync(string projectPath)
+        {
+            if (store.HasProject(projectPath))
+            {
+                return true;
+            }
+            if (Upstream == null)
+            {
+                return false;
+            }
+            return await Upstream.EnsureSubscribedAsync(projectPath).ConfigureAwait(false);
+        }
+
+        /// <summary>
         /// Handle a subscribe request: replay the project's current state to
-        /// `channel`, then register it to receive future updates. Returns a
-        /// failure result (without registering the channel) if the project
-        /// isn't known locally and there's no upstream to fall back to.
+        /// `channel`, then register it to receive future updates. Assumes
+        /// the caller has already ensured the project is available (e.g. via
+        /// EnsureAvailableAsync) -- this only checks the local store.
         /// </summary>
         public async Task<SubscribeResult> SubscribeAsync(string projectPath, ISubscriberChannel channel)
         {

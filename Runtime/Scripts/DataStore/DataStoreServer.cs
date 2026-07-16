@@ -152,14 +152,27 @@ namespace IVLab.ABREngine.DataStore
 
         private async Task HandleListProjectsAsync(NetworkStream stream, CancellationToken cancelToken)
         {
-            var projects = hub.Store.ListLocalProjects();
-            // Phase 1: single-node only, so the local set is the complete
-            // answer. A later phase extends this to first request the
-            // upstream's list (if configured) and overlay these local
-            // entries on top of it, so an upstream entry always survives.
+            // Start from local entries, then let upstream entries overwrite
+            // same-key ones -- a no-op today since entries are bare path
+            // strings, but keeps "farthest upstream wins" correct once
+            // per-project metadata exists to actually differ between tiers.
+            var merged = new System.Collections.Generic.Dictionary<string, byte>();
+            foreach (string projectPath in hub.Store.ListLocalProjects())
+            {
+                merged[projectPath] = 0;
+            }
+            if (hub.Upstream != null)
+            {
+                var upstreamProjects = await hub.Upstream.RequestListProjectsAsync().ConfigureAwait(false);
+                foreach (string projectPath in upstreamProjects)
+                {
+                    merged[projectPath] = 0;
+                }
+            }
+
             await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
-            await FrameIO.WriteInt32Async(stream, projects.Count, cancelToken).ConfigureAwait(false);
-            foreach (string projectPath in projects)
+            await FrameIO.WriteInt32Async(stream, merged.Count, cancelToken).ConfigureAwait(false);
+            foreach (string projectPath in merged.Keys)
             {
                 await FrameIO.WriteStringAsync(stream, projectPath, cancelToken).ConfigureAwait(false);
             }
@@ -173,8 +186,12 @@ namespace IVLab.ABREngine.DataStore
             SubscribeResult result;
             try
             {
-                bool exists = hub.Store.HasProject(projectPath);
-                if (!exists)
+                // On a local miss, this recursively chains a subscribe
+                // upstream (if configured) and blocks until that project's
+                // initial replay lands here, before we answer the ack --
+                // exactly the "cold subscribe chain-building" behavior.
+                bool available = await hub.EnsureAvailableAsync(projectPath).ConfigureAwait(false);
+                if (!available)
                 {
                     await FrameIO.WriteStringAsync(stream, ProtocolTags.ErrorPrefix + $"unknown project \"{projectPath}\"", cancelToken).ConfigureAwait(false);
                     return;

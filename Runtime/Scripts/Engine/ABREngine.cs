@@ -210,6 +210,46 @@ namespace IVLab.ABREngine
         public DataStoreNode DataStore { get; private set; }
 
         /// <summary>
+        /// Subscribe to a project via this node's embedded DataStore --
+        /// lazily chaining to an upstream DataStore first if the project
+        /// isn't already available locally (see
+        /// <see cref="SubscriptionHub.EnsureAvailableAsync"/>) -- and feed
+        /// both its full-state replay and any future live updates directly
+        /// into this instance's DataManager/rendering pipeline via a
+        /// <see cref="DataManagerSubscriberChannel"/>. Requires
+        /// <see cref="ABRConfig.dataStorePort"/> to be set; see also
+        /// <see cref="ABRConfig.subscribeProjects"/> for auto-subscribing at
+        /// startup instead of calling this directly.
+        /// </summary>
+        /// <param name="projectPath">2-segment project path, e.g. "Organization/Dataset"</param>
+        /// <returns>True if the subscription succeeded.</returns>
+        public async Task<bool> SubscribeToProject(string projectPath)
+        {
+            if (DataStore == null)
+            {
+                Debug.LogError($"Cannot subscribe to project \"{projectPath}\": this instance's DataStore is not enabled (set Config.dataStorePort)");
+                return false;
+            }
+
+            bool available = await DataStore.Hub.EnsureAvailableAsync(projectPath);
+            if (!available)
+            {
+                Debug.LogError($"Could not subscribe to project \"{projectPath}\": not available locally and no reachable upstream has it");
+                return false;
+            }
+
+            SubscribeResult result = await DataStore.Hub.SubscribeAsync(projectPath, new DataManagerSubscriberChannel());
+            if (!result.Success)
+            {
+                Debug.LogError($"Could not subscribe to project \"{projectPath}\": {result.ErrorMessage}");
+                return false;
+            }
+
+            Debug.Log($"Subscribed to project \"{projectPath}\" via embedded DataStore");
+            return true;
+        }
+
+        /// <summary>
         /// Delegate callback that is called whenever the ABRState is updated.
         /// This is useful for applications that build on ABR and need to know
         /// when the state has been updated.
@@ -427,6 +467,20 @@ namespace IVLab.ABREngine
                         LocalStorageRoot = Path.Combine(MediaPath, ABRConfig.Consts.DatasetFolder),
                         Upstream = upstream
                     });
+
+                    if (Config.subscribeProjects != null)
+                    {
+                        foreach (string projectPath in Config.subscribeProjects)
+                        {
+                            if (!string.IsNullOrEmpty(projectPath))
+                            {
+                                // Fire-and-forget: don't block Awake() on a
+                                // network round trip. SubscribeToProject logs
+                                // its own errors if this fails.
+                                _ = SubscribeToProject(projectPath);
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception e)

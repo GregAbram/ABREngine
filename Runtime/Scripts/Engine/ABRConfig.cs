@@ -198,6 +198,17 @@ namespace IVLab.ABREngine
         public RemoteDataSource[] remotes;
 
         /// <summary>
+        ///     Project path(s) (e.g. "Organization/Dataset") to
+        ///     automatically subscribe to via this node's embedded
+        ///     DataStore on startup -- see <see cref="ABREngine.SubscribeToProject"/>.
+        ///     Requires <see cref="dataStorePort"/> to be set. Each
+        ///     subscription lazily chains through <see cref="remotes"/> if
+        ///     the project isn't already available locally.
+        /// </summary>
+        [Tooltip("Project path(s) to automatically subscribe to via this node's embedded DataStore on startup. Requires dataStorePort to be set.")]
+        public string[] subscribeProjects;
+
+        /// <summary>
         /// Deprecated manual override for scaling incoming data, used only
         /// as a fallback when a dataset has no project.json (see <see
         /// cref="ProjectInfo"/>) to supply its true data-space bounds.

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <AssemblyName>DataStore</AssemblyName>
+    <RootNamespace>IVLab.ABREngine.DataStore</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Link (not copy) the Unity-agnostic core so there is only one copy of
+      the source, compiled twice: once here as a standalone console app,
+      once by Unity via Runtime/IVLab.ABREngine.Runtime.asmdef.
+    -->
+    <Compile Include="..\Runtime\Scripts\DataStore\*.cs" />
+  </ItemGroup>
+
+</Project>

@@ -1,1 +1,5 @@
 Documentation~
+
+# Standalone DataStore console app build output
+DataStore/bin/
+DataStore/obj/

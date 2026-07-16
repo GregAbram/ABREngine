@@ -166,6 +166,14 @@ namespace IVLab.ABREngine
                             ProjectInfo info = JsonUtility.FromJson<ProjectInfo>(textData.json);
                             ABREngine.Instance.Data.SaveProjectInfo(textData.label, info.bounds);
 
+                            // If this node's embedded DataStore is enabled, also
+                            // persist the raw json here so it can be relayed to
+                            // any downstream subscribers of this project.
+                            if (ABREngine.Instance.DataStore != null)
+                            {
+                                await ABREngine.Instance.DataStore.Hub.IngestProjectInfoAsync(textData.label, textData.json);
+                            }
+
                             await StreamMethods.WriteStringToStreamAsync(client.GetStream(), "ok", cancelToken);
                             Debug.Log("Saved project info for \"" + textData.label + "\"");
 
@@ -196,6 +204,14 @@ namespace IVLab.ABREngine
                             ABREngine.Instance.Data.ImportRawDataset(textData.label, dataset);
                             ABREngine.Instance.Data.CacheRawDataset(textData.tag, textData.label, textData.json, textData.bindata);
 
+                            // Also feed the embedded DataStore (if enabled), so
+                            // this key data can be relayed to downstream
+                            // subscribers -- same raw json/bindata, no re-parse.
+                            if (ABREngine.Instance.DataStore != null)
+                            {
+                                await ABREngine.Instance.DataStore.Hub.IngestKeyDataAsync(textData.label, textData.json, textData.bindata);
+                            }
+
                             foreach  (var idi in ABREngine.Instance.GetDataImpressions(textData.label))
                             {
                                 idi.RenderHints.DataChanged = true;
@@ -214,6 +230,12 @@ namespace IVLab.ABREngine
                 {
                     await StreamMethods.WriteStringToStreamAsync(client.GetStream(), "ok", cancelToken);
                     Debug.Log("All objects have been unpacked, Sent label \"" + textData.label + "\" " + " ok");
+
+                    if (ABREngine.Instance.DataStore != null)
+                    {
+                        await ABREngine.Instance.DataStore.Hub.IngestUpdateAsync();
+                    }
+
                     await UnityThreadScheduler.Instance.RunMainThreadWork(() => ABREngine.Instance.Render());
                 }
             });

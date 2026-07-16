@@ -24,6 +24,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using IVLab.Utilities;
+using IVLab.ABREngine.DataStore;
 using UnityEngine;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
@@ -198,6 +199,15 @@ namespace IVLab.ABREngine
         /// A listener for data connections (e.g., Send2ABR from ParaView)
         /// </summary>
         public SocketDataListener DataListener { get; private set; }
+
+        /// <summary>
+        /// This node's embedded DataStore, if enabled via
+        /// <see cref="ABRConfig.dataStorePort"/>. Lets other DataStores (or
+        /// Unity clients) subscribe to data ingested here, and/or lazily
+        /// pulls from an upstream DataStore configured via
+        /// <see cref="ABRConfig.remotes"/>.
+        /// </summary>
+        public DataStoreNode DataStore { get; private set; }
 
         /// <summary>
         /// Delegate callback that is called whenever the ABRState is updated.
@@ -398,6 +408,26 @@ namespace IVLab.ABREngine
                     DataListener = new SocketDataListener(Config.dataListenerPort);
                     DataListener.StartServer();
                 }
+                if (Config.dataStorePort != 0)
+                {
+                    RemoteEndpoint upstream = null;
+                    if (Config.remotes != null && Config.remotes.Length > 0)
+                    {
+                        upstream = new RemoteEndpoint { Host = Config.remotes[0].host, Port = Config.remotes[0].port };
+                    }
+
+                    DataStore = new DataStoreNode();
+                    DataStore.Start(new DataStoreNodeConfig
+                    {
+                        ListenPort = Config.dataStorePort,
+                        // Same root DataManager already reads/writes -- both
+                        // use the identical on-disk layout and write
+                        // byte-identical content for the same path, so
+                        // sharing it is a unification, not a duplication.
+                        LocalStorageRoot = Path.Combine(MediaPath, ABRConfig.Consts.DatasetFolder),
+                        Upstream = upstream
+                    });
+                }
             }
             catch (Exception e)
             {
@@ -488,6 +518,7 @@ namespace IVLab.ABREngine
         {
             _notifier?.Stop();
             DataListener?.StopServer();
+            DataStore?.Stop();
         }
 
         /// <summary>

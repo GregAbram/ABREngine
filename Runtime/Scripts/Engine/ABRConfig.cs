@@ -177,6 +177,24 @@ namespace IVLab.ABREngine
         [Tooltip("Port to listen for data connections (e.g. from ParaView on). A port `0` is assumed to mean no connection.")]
         public int dataListenerPort = 1900;
 
+        /// <summary>
+        ///     Port for this node's embedded DataStore (chained pub/sub
+        ///     broker) to listen on for subscribe/listprojects/ingestion
+        ///     connections, independent of `dataListenerPort`. A node can
+        ///     run both simultaneously (raw ParaView ingestion on one port,
+        ///     DataStore subscribe service on another). Default: null
+        /// </summary>
+        [Tooltip("Port for this node's embedded DataStore to listen on. A port `0` is assumed to mean the DataStore is disabled.")]
+        public int dataStorePort = 0;
+
+        /// <summary>
+        ///     Upstream DataStore(s) for this node's embedded DataStore to
+        ///     lazily subscribe through on a local cache miss. Only the
+        ///     first entry is used today (a node has zero or one upstream).
+        ///     Leave empty for a root node fed only by ParaView/direct
+        ///     pushes.
+        /// </summary>
+        [Tooltip("Upstream DataStore to subscribe through on a local cache miss. Only the first entry is used. Leave empty for a root node.")]
         public RemoteDataSource[] remotes;
 
         /// <summary>
@@ -250,6 +268,7 @@ namespace IVLab.ABREngine
             visAssetServerUrl = "";
             dataServerUrl = "";
             dataListenerPort = 0;
+            dataStorePort = 0;
 
             overrideGroupToDataMatrices = new List<GroupToDataMatrixOverrideFields>();
         }

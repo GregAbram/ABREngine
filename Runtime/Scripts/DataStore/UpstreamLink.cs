@@ -136,6 +136,15 @@ namespace IVLab.ABREngine.DataStore
                                 }
                                 break;
 
+                            case ProtocolTags.State:
+                                {
+                                    string label = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                                    string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                                    await FrameIO.ReadBytesAsync(stream).ConfigureAwait(false);
+                                    await hub.IngestStateAsync(label, json).ConfigureAwait(false);
+                                }
+                                break;
+
                             case ProtocolTags.Update:
                                 await hub.IngestUpdateAsync().ConfigureAwait(false);
                                 if (!signaledReplayComplete)

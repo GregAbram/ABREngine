@@ -79,6 +79,15 @@ internal static class TestSubscriber
                     }
                     break;
 
+                case ProtocolTags.State:
+                    {
+                        string label = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                        string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                        await FrameIO.ReadBytesAsync(stream).ConfigureAwait(false);
+                        Console.WriteLine($"[state] {label}: {json}");
+                    }
+                    break;
+
                 case ProtocolTags.Update:
                     Console.WriteLine("[update] -- end of replay / live flush --");
                     break;
@@ -112,5 +121,45 @@ internal static class TestSubscriber
             string projectPath = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
             Console.WriteLine($"  {projectPath}");
         }
+    }
+
+    public static async Task ListStatesAsync(string host, int port, string projectPath)
+    {
+        using TcpClient client = new TcpClient();
+        await client.ConnectAsync(host, port).ConfigureAwait(false);
+        NetworkStream stream = client.GetStream();
+
+        await FrameIO.WriteStringAsync(stream, ProtocolTags.ListStates).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, projectPath).ConfigureAwait(false);
+
+        string status = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        if (status.StartsWith(ProtocolTags.ErrorPrefix, StringComparison.Ordinal))
+        {
+            Console.WriteLine($"liststates failed: {status}");
+            return;
+        }
+
+        int count = await FrameIO.ReadInt32Async(stream).ConfigureAwait(false);
+        Console.WriteLine($"{count} state(s) for \"{projectPath}\":");
+        for (int i = 0; i < count; i++)
+        {
+            string name = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+            Console.WriteLine($"  {name}");
+        }
+    }
+
+    public static async Task PushStateAsync(string host, int port, string statePath, string json)
+    {
+        using TcpClient client = new TcpClient();
+        await client.ConnectAsync(host, port).ConfigureAwait(false);
+        NetworkStream stream = client.GetStream();
+
+        await FrameIO.WriteStringAsync(stream, ProtocolTags.State).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, statePath).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, json).ConfigureAwait(false);
+        await FrameIO.WriteBytesAsync(stream, Array.Empty<byte>()).ConfigureAwait(false);
+
+        string ack = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        Console.WriteLine($"pushstate \"{statePath}\" -> {ack}");
     }
 }

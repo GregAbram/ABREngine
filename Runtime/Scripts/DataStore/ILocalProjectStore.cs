@@ -33,8 +33,23 @@ namespace IVLab.ABREngine.DataStore
     }
 
     /// <summary>
+    /// One named visualization state (styling config -- which KeyData gets
+    /// which glyph/color/VisAsset) belonging to a project, exactly as
+    /// received/stored -- pure JSON, never parsed. A project can have
+    /// multiple named states (e.g. alternate styling configs for the same
+    /// data).
+    /// </summary>
+    public class StateEntry
+    {
+        /// <summary>Full 4-segment state path, e.g. "Org/Dataset/State/Name".</summary>
+        public string StatePath;
+        public string Json;
+    }
+
+    /// <summary>
     /// The full known state of one project: its bounds (project.json), if
-    /// any, plus every key data object stored for it.
+    /// any, plus every key data object and named visualization state
+    /// stored for it.
     /// </summary>
     public class ProjectSnapshot
     {
@@ -45,6 +60,8 @@ namespace IVLab.ABREngine.DataStore
         public string ProjectInfoJson;
 
         public List<KeyDataEntry> KeyData = new List<KeyDataEntry>();
+
+        public List<StateEntry> States = new List<StateEntry>();
     }
 
     /// <summary>
@@ -64,8 +81,14 @@ namespace IVLab.ABREngine.DataStore
         /// <summary>Persist (or overwrite) one key data object's json header + binary payload.</summary>
         void SaveKeyData(string keyDataPath, string json, byte[] binData);
 
+        /// <summary>Persist (or overwrite) one named visualization state's json.</summary>
+        void SaveState(string statePath, string json);
+
         /// <summary>All 2-segment project paths currently known locally.</summary>
         IReadOnlyCollection<string> ListLocalProjects();
+
+        /// <summary>All state names (not full paths) currently known locally for a project.</summary>
+        IReadOnlyCollection<string> ListStateNames(string projectPath);
 
         /// <summary>Attempt to read back everything currently known about a project, for replaying to a new subscriber.</summary>
         bool TryReplayProject(string projectPath, out ProjectSnapshot snapshot);

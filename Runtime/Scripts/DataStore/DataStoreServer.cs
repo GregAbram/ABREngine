@@ -115,8 +115,22 @@ namespace IVLab.ABREngine.DataStore
                             }
                             break;
 
+                        case ProtocolTags.State:
+                            {
+                                string label = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+                                string json = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+                                await FrameIO.ReadBytesAsync(stream, cancelToken).ConfigureAwait(false); // always zero-length for state; consume to stay framed
+                                await hub.IngestStateAsync(label, json).ConfigureAwait(false);
+                                await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
+                            }
+                            break;
+
                         case ProtocolTags.ListProjects:
                             await HandleListProjectsAsync(stream, cancelToken).ConfigureAwait(false);
+                            break;
+
+                        case ProtocolTags.ListStates:
+                            await HandleListStatesAsync(stream, cancelToken).ConfigureAwait(false);
                             break;
 
                         case ProtocolTags.Subscribe:
@@ -175,6 +189,32 @@ namespace IVLab.ABREngine.DataStore
             foreach (string projectPath in merged.Keys)
             {
                 await FrameIO.WriteStringAsync(stream, projectPath, cancelToken).ConfigureAwait(false);
+            }
+        }
+
+        private async Task HandleListStatesAsync(NetworkStream stream, CancellationToken cancelToken)
+        {
+            string projectPath = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+
+            // Reuses the same "make it locally available" step subscribe
+            // uses -- this chains upstream (if configured) to pull the
+            // project's full snapshot (including states) into the local
+            // store, but unlike subscribe it doesn't keep the connection
+            // open or register a live subscriber -- just a cheap, one-shot
+            // answer from whatever's now resident locally.
+            bool available = await hub.EnsureAvailableAsync(projectPath).ConfigureAwait(false);
+            if (!available)
+            {
+                await FrameIO.WriteStringAsync(stream, ProtocolTags.ErrorPrefix + $"unknown project \"{projectPath}\"", cancelToken).ConfigureAwait(false);
+                return;
+            }
+
+            var stateNames = hub.Store.ListStateNames(projectPath);
+            await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
+            await FrameIO.WriteInt32Async(stream, stateNames.Count, cancelToken).ConfigureAwait(false);
+            foreach (string name in stateNames)
+            {
+                await FrameIO.WriteStringAsync(stream, name, cancelToken).ConfigureAwait(false);
             }
         }
 

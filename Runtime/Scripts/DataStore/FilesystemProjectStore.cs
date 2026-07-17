@@ -33,6 +33,7 @@ namespace IVLab.ABREngine.DataStore
     {
         private const string ProjectInfoFileName = "project.json";
         private const string KeyDataDirName = "KeyData";
+        private const string StateDirName = "State";
 
         private readonly string root;
         private readonly object fileLock = new object();
@@ -56,6 +57,11 @@ namespace IVLab.ABREngine.DataStore
         private string KeyDataDir(string projectPath)
         {
             return Path.Combine(ProjectDir(projectPath), KeyDataDirName);
+        }
+
+        private string StateDir(string projectPath)
+        {
+            return Path.Combine(ProjectDir(projectPath), StateDirName);
         }
 
         public bool HasProject(string projectPath)
@@ -94,6 +100,34 @@ namespace IVLab.ABREngine.DataStore
                 {
                     File.WriteAllBytes(Path.Combine(keyDataDir, name + ".bin"), binData);
                 }
+            }
+        }
+
+        public void SaveState(string statePath, string json)
+        {
+            string projectPath = ProjectPaths.GetProjectPath(statePath);
+            string name = ProjectPaths.GetName(statePath);
+
+            lock (fileLock)
+            {
+                string stateDir = StateDir(projectPath);
+                Directory.CreateDirectory(stateDir);
+                File.WriteAllText(Path.Combine(stateDir, name + ".json"), json);
+            }
+        }
+
+        public IReadOnlyCollection<string> ListStateNames(string projectPath)
+        {
+            lock (fileLock)
+            {
+                string stateDir = StateDir(projectPath);
+                if (!Directory.Exists(stateDir))
+                {
+                    return new List<string>();
+                }
+                return Directory.EnumerateFiles(stateDir, "*.json")
+                    .Select(f => Path.GetFileNameWithoutExtension(f))
+                    .ToList();
             }
         }
 
@@ -154,6 +188,20 @@ namespace IVLab.ABREngine.DataStore
                             KeyDataPath = projectPath + ProjectPaths.Separator + KeyDataDirName + ProjectPaths.Separator + name,
                             Json = File.ReadAllText(jsonFile),
                             BinData = File.Exists(binFile) ? File.ReadAllBytes(binFile) : new byte[0]
+                        });
+                    }
+                }
+
+                string stateDir = StateDir(projectPath);
+                if (Directory.Exists(stateDir))
+                {
+                    foreach (string jsonFile in Directory.EnumerateFiles(stateDir, "*.json"))
+                    {
+                        string name = Path.GetFileNameWithoutExtension(jsonFile);
+                        snapshot.States.Add(new StateEntry
+                        {
+                            StatePath = projectPath + ProjectPaths.Separator + StateDirName + ProjectPaths.Separator + name,
+                            Json = File.ReadAllText(jsonFile)
                         });
                     }
                 }

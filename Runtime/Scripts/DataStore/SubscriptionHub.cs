@@ -108,6 +108,12 @@ namespace IVLab.ABREngine.DataStore
             {
                 await channel.SendKeyDataAsync(entry.KeyDataPath, entry.Json, entry.BinData).ConfigureAwait(false);
             }
+            // States are replayed after KeyData so that any KeyData path a
+            // state references is already resident by the time it arrives.
+            foreach (StateEntry entry in snapshot.States)
+            {
+                await channel.SendStateAsync(entry.StatePath, entry.Json).ConfigureAwait(false);
+            }
             await channel.SendUpdateAsync().ConfigureAwait(false);
 
             GetOrAddSubscriberSet(projectPath)[channel] = 0;
@@ -139,6 +145,15 @@ namespace IVLab.ABREngine.DataStore
             string projectPath = ProjectPaths.GetProjectPath(keyDataPath);
             dirtyProjects[projectPath] = 0;
             await FanOutAsync(projectPath, channel => channel.SendKeyDataAsync(keyDataPath, json, binData)).ConfigureAwait(false);
+        }
+
+        /// <summary>Ingest a named visualization state write: persist it, mark its project dirty, and forward it live to existing subscribers.</summary>
+        public async Task IngestStateAsync(string statePath, string json)
+        {
+            store.SaveState(statePath, json);
+            string projectPath = ProjectPaths.GetProjectPath(statePath);
+            dirtyProjects[projectPath] = 0;
+            await FanOutAsync(projectPath, channel => channel.SendStateAsync(statePath, json)).ConfigureAwait(false);
         }
 
         /// <summary>Ingest a bare "update" barrier: forward it only to subscribers of projects that actually changed since the last one.</summary>

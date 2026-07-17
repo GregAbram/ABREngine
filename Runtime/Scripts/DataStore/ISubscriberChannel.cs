@@ -32,6 +32,7 @@ namespace IVLab.ABREngine.DataStore
     {
         Task SendProjectInfoAsync(string projectPath, string json);
         Task SendKeyDataAsync(string keyDataPath, string json, byte[] binData);
+        Task SendStateAsync(string statePath, string json);
         Task SendUpdateAsync();
     }
 }

@@ -72,6 +72,22 @@ namespace IVLab.ABREngine.DataStore
             }
         }
 
+        public async Task SendStateAsync(string statePath, string json)
+        {
+            await writeLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                await FrameIO.WriteStringAsync(stream, ProtocolTags.State).ConfigureAwait(false);
+                await FrameIO.WriteStringAsync(stream, statePath).ConfigureAwait(false);
+                await FrameIO.WriteStringAsync(stream, json).ConfigureAwait(false);
+                await FrameIO.WriteBytesAsync(stream, System.Array.Empty<byte>()).ConfigureAwait(false);
+            }
+            finally
+            {
+                writeLock.Release();
+            }
+        }
+
         public async Task SendUpdateAsync()
         {
             await writeLock.WaitAsync().ConfigureAwait(false);

@@ -51,6 +51,21 @@ namespace IVLab.ABREngine.DataStore
         /// </summary>
         public const string ListProjects = "listprojects";
 
+        /// <summary>
+        /// One named visualization state's json (styling config -- which
+        /// KeyData gets which glyph/color/VisAsset). A project can have
+        /// multiple named states.
+        /// </summary>
+        public const string State = "state";
+
+        /// <summary>
+        /// Request the set of state names known locally for one project
+        /// (a cheap, one-shot browse query -- deliberately separate from
+        /// "subscribe", which opens a long-lived connection and replays all
+        /// of a project's key data binaries too).
+        /// </summary>
+        public const string ListStates = "liststates";
+
         /// <summary>Literal ack string for a successful request.</summary>
         public const string Ok = "ok";
 

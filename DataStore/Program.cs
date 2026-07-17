@@ -39,6 +39,10 @@ internal class Program
                 return await RunSubscribeAsync(args).ConfigureAwait(false);
             case "listprojects":
                 return await RunListProjectsAsync(args).ConfigureAwait(false);
+            case "liststates":
+                return await RunListStatesAsync(args).ConfigureAwait(false);
+            case "pushstate":
+                return await RunPushStateAsync(args).ConfigureAwait(false);
             default:
                 PrintUsage();
                 return 1;
@@ -51,6 +55,8 @@ internal class Program
         Console.Error.WriteLine("  DataStore serve <port> <storageRoot> [upstreamHost upstreamPort]");
         Console.Error.WriteLine("  DataStore subscribe <host> <port> <projectPath>");
         Console.Error.WriteLine("  DataStore listprojects <host> <port>");
+        Console.Error.WriteLine("  DataStore liststates <host> <port> <projectPath>");
+        Console.Error.WriteLine("  DataStore pushstate <host> <port> <statePath> <json>");
     }
 
     private static int RunServe(string[] args)
@@ -114,6 +120,35 @@ internal class Program
         string host = args[1];
 
         await TestSubscriber.ListProjectsAsync(host, port).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task<int> RunListStatesAsync(string[] args)
+    {
+        if (args.Length < 4 || !int.TryParse(args[2], out int port))
+        {
+            PrintUsage();
+            return 1;
+        }
+        string host = args[1];
+        string projectPath = args[3];
+
+        await TestSubscriber.ListStatesAsync(host, port, projectPath).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task<int> RunPushStateAsync(string[] args)
+    {
+        if (args.Length < 5 || !int.TryParse(args[2], out int port))
+        {
+            PrintUsage();
+            return 1;
+        }
+        string host = args[1];
+        string statePath = args[3];
+        string json = args[4];
+
+        await TestSubscriber.PushStateAsync(host, port, statePath, json).ConfigureAwait(false);
         return 0;
     }
 }

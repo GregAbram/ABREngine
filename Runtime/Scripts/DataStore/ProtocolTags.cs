@@ -66,6 +66,14 @@ namespace IVLab.ABREngine.DataStore
         /// </summary>
         public const string ListStates = "liststates";
 
+        /// <summary>
+        /// Request the name + json header (no binary payload) of every key
+        /// data object known locally for one project -- a cheap browse
+        /// query for populating a UI palette, deliberately separate from
+        /// "subscribe" for the same reason as "liststates".
+        /// </summary>
+        public const string ListKeyData = "listkeydata";
+
         /// <summary>Literal ack string for a successful request.</summary>
         public const string Ok = "ok";
 

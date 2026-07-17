@@ -47,6 +47,18 @@ namespace IVLab.ABREngine.DataStore
     }
 
     /// <summary>
+    /// A key data object's name + json header only (no binary payload) --
+    /// enough to populate a browse/palette UI without pulling potentially
+    /// large geometry over the wire just to list what's available.
+    /// </summary>
+    public class KeyDataSummary
+    {
+        /// <summary>Just the name (last path segment), not the full path.</summary>
+        public string Name;
+        public string Json;
+    }
+
+    /// <summary>
     /// The full known state of one project: its bounds (project.json), if
     /// any, plus every key data object and named visualization state
     /// stored for it.
@@ -89,6 +101,9 @@ namespace IVLab.ABREngine.DataStore
 
         /// <summary>All state names (not full paths) currently known locally for a project.</summary>
         IReadOnlyCollection<string> ListStateNames(string projectPath);
+
+        /// <summary>Name + json header (no binary) for every key data object currently known locally for a project.</summary>
+        IReadOnlyCollection<KeyDataSummary> ListKeyDataSummaries(string projectPath);
 
         /// <summary>Attempt to read back everything currently known about a project, for replaying to a new subscriber.</summary>
         bool TryReplayProject(string projectPath, out ProjectSnapshot snapshot);

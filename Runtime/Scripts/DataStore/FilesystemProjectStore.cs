@@ -131,6 +131,25 @@ namespace IVLab.ABREngine.DataStore
             }
         }
 
+        public IReadOnlyCollection<KeyDataSummary> ListKeyDataSummaries(string projectPath)
+        {
+            lock (fileLock)
+            {
+                string keyDataDir = KeyDataDir(projectPath);
+                if (!Directory.Exists(keyDataDir))
+                {
+                    return new List<KeyDataSummary>();
+                }
+                return Directory.EnumerateFiles(keyDataDir, "*.json")
+                    .Select(f => new KeyDataSummary
+                    {
+                        Name = Path.GetFileNameWithoutExtension(f),
+                        Json = File.ReadAllText(f)
+                    })
+                    .ToList();
+            }
+        }
+
         public IReadOnlyCollection<string> ListLocalProjects()
         {
             var projects = new List<string>();

@@ -41,6 +41,8 @@ internal class Program
                 return await RunListProjectsAsync(args).ConfigureAwait(false);
             case "liststates":
                 return await RunListStatesAsync(args).ConfigureAwait(false);
+            case "listkeydata":
+                return await RunListKeyDataAsync(args).ConfigureAwait(false);
             case "pushstate":
                 return await RunPushStateAsync(args).ConfigureAwait(false);
             default:
@@ -56,6 +58,7 @@ internal class Program
         Console.Error.WriteLine("  DataStore subscribe <host> <port> <projectPath>");
         Console.Error.WriteLine("  DataStore listprojects <host> <port>");
         Console.Error.WriteLine("  DataStore liststates <host> <port> <projectPath>");
+        Console.Error.WriteLine("  DataStore listkeydata <host> <port> <projectPath>");
         Console.Error.WriteLine("  DataStore pushstate <host> <port> <statePath> <json>");
     }
 
@@ -134,6 +137,20 @@ internal class Program
         string projectPath = args[3];
 
         await TestSubscriber.ListStatesAsync(host, port, projectPath).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task<int> RunListKeyDataAsync(string[] args)
+    {
+        if (args.Length < 4 || !int.TryParse(args[2], out int port))
+        {
+            PrintUsage();
+            return 1;
+        }
+        string host = args[1];
+        string projectPath = args[3];
+
+        await TestSubscriber.ListKeyDataAsync(host, port, projectPath).ConfigureAwait(false);
         return 0;
     }
 

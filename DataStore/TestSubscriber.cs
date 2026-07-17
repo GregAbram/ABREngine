@@ -148,6 +148,32 @@ internal static class TestSubscriber
         }
     }
 
+    public static async Task ListKeyDataAsync(string host, int port, string projectPath)
+    {
+        using TcpClient client = new TcpClient();
+        await client.ConnectAsync(host, port).ConfigureAwait(false);
+        NetworkStream stream = client.GetStream();
+
+        await FrameIO.WriteStringAsync(stream, ProtocolTags.ListKeyData).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, projectPath).ConfigureAwait(false);
+
+        string status = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        if (status.StartsWith(ProtocolTags.ErrorPrefix, StringComparison.Ordinal))
+        {
+            Console.WriteLine($"listkeydata failed: {status}");
+            return;
+        }
+
+        int count = await FrameIO.ReadInt32Async(stream).ConfigureAwait(false);
+        Console.WriteLine($"{count} key data object(s) for \"{projectPath}\":");
+        for (int i = 0; i < count; i++)
+        {
+            string name = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+            string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+            Console.WriteLine($"  {name}: {json}");
+        }
+    }
+
     public static async Task PushStateAsync(string host, int port, string statePath, string json)
     {
         using TcpClient client = new TcpClient();

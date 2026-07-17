@@ -133,6 +133,10 @@ namespace IVLab.ABREngine.DataStore
                             await HandleListStatesAsync(stream, cancelToken).ConfigureAwait(false);
                             break;
 
+                        case ProtocolTags.ListKeyData:
+                            await HandleListKeyDataAsync(stream, cancelToken).ConfigureAwait(false);
+                            break;
+
                         case ProtocolTags.Subscribe:
                             await HandleSubscribeAsync(stream, cancelToken).ConfigureAwait(false);
                             break;
@@ -215,6 +219,27 @@ namespace IVLab.ABREngine.DataStore
             foreach (string name in stateNames)
             {
                 await FrameIO.WriteStringAsync(stream, name, cancelToken).ConfigureAwait(false);
+            }
+        }
+
+        private async Task HandleListKeyDataAsync(NetworkStream stream, CancellationToken cancelToken)
+        {
+            string projectPath = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+
+            bool available = await hub.EnsureAvailableAsync(projectPath).ConfigureAwait(false);
+            if (!available)
+            {
+                await FrameIO.WriteStringAsync(stream, ProtocolTags.ErrorPrefix + $"unknown project \"{projectPath}\"", cancelToken).ConfigureAwait(false);
+                return;
+            }
+
+            var summaries = hub.Store.ListKeyDataSummaries(projectPath);
+            await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
+            await FrameIO.WriteInt32Async(stream, summaries.Count, cancelToken).ConfigureAwait(false);
+            foreach (KeyDataSummary summary in summaries)
+            {
+                await FrameIO.WriteStringAsync(stream, summary.Name, cancelToken).ConfigureAwait(false);
+                await FrameIO.WriteStringAsync(stream, summary.Json, cancelToken).ConfigureAwait(false);
             }
         }
 

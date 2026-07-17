@@ -85,8 +85,8 @@ namespace IVLab.ABREngine
         public class ExternalConfiguration
         {
             public string mediaDirectory;
-            public string serverURL;     
-            public string stateFile;     
+            public string serverURL;
+            public string stateFile;
             public jvector center;
             public jvector rotation;
             public double scale;
@@ -95,6 +95,9 @@ namespace IVLab.ABREngine
             public jvector nanColor;
             public int dataListenerPort;
             public RemoteDataSource[] remotes;
+            public int dataStorePort;
+            public string[] subscribeProjects;
+            public string subscribeStateName;
         };
 
         [Header("Common Configuration Options (hover for more info)")]
@@ -433,8 +436,19 @@ namespace IVLab.ABREngine
                 
                 cfg.defaultColor = new jvector() { x = defaultColor.r, y = defaultColor.g, z = defaultColor.b };
                 cfg.hiliteColor = new jvector() { x = hiliteColor.r, y = hiliteColor.g, z = hiliteColor.b };
-                cfg.nanColor = new jvector() { x = defaultNanColor.r, y = defaultNanColor.g, z = defaultNanColor.b };   
+                cfg.nanColor = new jvector() { x = defaultNanColor.r, y = defaultNanColor.g, z = defaultNanColor.b };
+                // center/rotation are deprecated and commonly omitted from a
+                // config file entirely -- unlike the color fields above,
+                // these were never pre-seeded, so an abr.json without them
+                // left cfg.center/cfg.rotation null. That threw a
+                // NullReferenceException a few lines down (cfg.center.x)
+                // which the catch below silently swallowed, aborting every
+                // assignment after it -- including dataStorePort and
+                // friends, regardless of what the JSON actually said.
+                cfg.center = new jvector() { x = center.x, y = center.y, z = center.z };
+                cfg.rotation = new jvector() { x = rotation.x, y = rotation.y, z = rotation.z };
                 cfg.dataListenerPort = dataListenerPort;
+                cfg.dataStorePort = dataStorePort;
 
                 JsonConvert.PopulateObject(json, cfg);
                 Debug.Log("Using external configuration file: " + cfgFile);
@@ -450,6 +464,9 @@ namespace IVLab.ABREngine
                 defaultNanColor = new Color(cfg.nanColor.x, cfg.nanColor.y, cfg.nanColor.z);
                 dataListenerPort = cfg.dataListenerPort;
                 remotes = cfg.remotes;
+                dataStorePort = cfg.dataStorePort;
+                subscribeProjects = cfg.subscribeProjects;
+                subscribeStateName = cfg.subscribeStateName;
 
                 if (mediaPath.StartsWith("ABR_ROOT"))
                     mediaPath = abr_root + mediaPath.Substring(8);

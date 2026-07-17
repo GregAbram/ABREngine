@@ -209,6 +209,19 @@ namespace IVLab.ABREngine
         public string[] subscribeProjects;
 
         /// <summary>
+        ///     The single named visualization state (styling: which KeyData
+        ///     gets which glyph/color/VisAsset) this instance should apply
+        ///     when it arrives via a DataStore project subscription -- see
+        ///     <see cref="DataManagerSubscriberChannel"/>. A project can
+        ///     have multiple named states; this names exactly one, since
+        ///     exactly one state is ever "active" for a given rendering
+        ///     instance. Leave empty for data-only mode (no auto-styling
+        ///     from DataStore).
+        /// </summary>
+        [Tooltip("The single named state (from a subscribed project) to apply for styling. Leave empty for data-only mode.")]
+        public string subscribeStateName;
+
+        /// <summary>
         /// Deprecated manual override for scaling incoming data, used only
         /// as a fallback when a dataset has no project.json (see <see
         /// cref="ProjectInfo"/>) to supply its true data-space bounds.

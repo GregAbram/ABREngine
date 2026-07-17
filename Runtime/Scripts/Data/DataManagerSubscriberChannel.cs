@@ -66,6 +66,20 @@ namespace IVLab.ABREngine
             return Task.CompletedTask;
         }
 
+        public Task SendStateAsync(string statePath, string json)
+        {
+            // A project can have multiple named states; this instance only
+            // applies the one named by Config.subscribeStateName (empty =
+            // data-only mode, ignore every state).
+            if (ProjectPaths.GetName(statePath) != ABREngine.Instance.Config.subscribeStateName)
+            {
+                return Task.CompletedTask;
+            }
+
+            return UnityThreadScheduler.Instance.RunMainThreadWork(() =>
+                ABREngine.Instance.LoadState<TextStateFileLoader>(json));
+        }
+
         public Task SendUpdateAsync()
         {
             return UnityThreadScheduler.Instance.RunMainThreadWork(() => ABREngine.Instance.Render());

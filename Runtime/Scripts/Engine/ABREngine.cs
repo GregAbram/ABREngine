@@ -498,6 +498,13 @@ namespace IVLab.ABREngine
                     string statePath = Config.stateFile;
                     LoadState<PathStateFileLoader>(statePath);
                 }
+                else if (Config.dataStorePort != 0 && !string.IsNullOrEmpty(Config.subscribeStateName))
+                {
+                    // Styling comes from a DataStore project subscription
+                    // instead (see DataManagerSubscriberChannel.SendStateAsync)
+                    // -- skip the HTTP fetch-on-startup and the websocket
+                    // poke-to-refetch notifier this old path uses.
+                }
                 else
                 {
                     LoadState<HttpStateFileLoader>(Config.serverUrl.ToString());

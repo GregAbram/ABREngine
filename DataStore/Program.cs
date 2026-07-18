@@ -69,7 +69,8 @@ internal class Program
     private static void PrintUsage()
     {
         Console.Error.WriteLine("Usage:");
-        Console.Error.WriteLine("  DataStore serve <port> <storageRoot> [upstreamHost upstreamPort]");
+        Console.Error.WriteLine("  DataStore serve <port> <mediaRoot> [upstreamHost upstreamPort]");
+        Console.Error.WriteLine("      mediaRoot must contain \"datasets\" and \"visassets\" subfolders (created if missing).");
         Console.Error.WriteLine("  DataStore subscribe <host> <port> <projectPath>");
         Console.Error.WriteLine("  DataStore listprojects <host> <port>");
         Console.Error.WriteLine("  DataStore liststates <host> <port> <projectPath>");
@@ -91,15 +92,15 @@ internal class Program
             PrintUsage();
             return 1;
         }
-        string storageRoot = args[2];
-
-        // Sibling "visassets" folder next to storageRoot -- same
-        // MediaPath/datasets + MediaPath/visassets convention ABREngine.cs
-        // uses for the embedded node, kept implicit here (no new CLI arg)
-        // so existing "serve <port> <storageRoot> [upstreamHost upstreamPort]"
-        // invocations keep working unchanged.
-        string parentDir = Directory.GetParent(Path.GetFullPath(storageRoot))?.FullName ?? storageRoot;
-        string visAssetStorageRoot = Path.Combine(parentDir, "visassets");
+        // The media root itself (contains "datasets" and "visassets" as
+        // named children) -- same explicit-child pattern ABREngine.cs uses
+        // for the embedded node (Path.Combine(MediaPath, ...DatasetFolder)/
+        // ...VisAssetFolder), rather than inferring one from the other's
+        // sibling. ABRConfig.Consts isn't available here (Unity-only), so
+        // the folder names are the same literals, spelled out directly.
+        string mediaRoot = args[2];
+        string storageRoot = Path.Combine(mediaRoot, "datasets");
+        string visAssetStorageRoot = Path.Combine(mediaRoot, "visassets");
 
         RemoteEndpoint upstream = null;
         if (args.Length >= 5)

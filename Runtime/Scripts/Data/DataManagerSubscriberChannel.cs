@@ -69,9 +69,13 @@ namespace IVLab.ABREngine
         public Task SendStateAsync(string statePath, string json)
         {
             // A project can have multiple named states; this instance only
-            // applies the one named by Config.subscribeStateName (empty =
-            // data-only mode, ignore every state).
-            if (ProjectPaths.GetName(statePath) != ABREngine.Instance.Config.subscribeStateName)
+            // applies the one named by ABREngine.Instance.SubscribeStateName
+            // (empty = data-only mode, ignore every state). This is a live,
+            // runtime-settable field (see ABREngine.Subscribe()), not the
+            // abr.json-only value it used to be -- read fresh every call
+            // rather than cached, so a change takes effect on the very next
+            // push.
+            if (ProjectPaths.GetName(statePath) != ABREngine.Instance.SubscribeStateName)
             {
                 return Task.CompletedTask;
             }

@@ -217,9 +217,12 @@ namespace IVLab.ABREngine
         /// both its full-state replay and any future live updates directly
         /// into this instance's DataManager/rendering pipeline via a
         /// <see cref="DataManagerSubscriberChannel"/>. Requires
-        /// <see cref="ABRConfig.dataStorePort"/> to be set; see also
-        /// <see cref="ABRConfig.subscribeProjects"/> for auto-subscribing at
-        /// startup instead of calling this directly.
+        /// <see cref="ABRConfig.dataStorePort"/> to be set. This is the raw
+        /// building block -- it doesn't track or discard prior
+        /// subscriptions, so more than one project can be subscribed
+        /// simultaneously if called more than once. For the common "one
+        /// active project+state, chosen at runtime" case, see
+        /// <see cref="Subscribe"/> instead.
         /// </summary>
         /// <param name="projectPath">2-segment project path, e.g. "Organization/Dataset"</param>
         /// <returns>True if the subscription succeeded.</returns>
@@ -247,6 +250,88 @@ namespace IVLab.ABREngine
 
             Debug.Log($"Subscribed to project \"{projectPath}\" via embedded DataStore");
             return true;
+        }
+
+        /// <summary>
+        /// Project path (e.g. "Organization/Dataset") this instance should
+        /// subscribe to via its embedded DataStore. Setting this alone does
+        /// nothing -- call <see cref="Subscribe"/> (e.g. wire it to a UI
+        /// Button, or a headset-side project/state picker) to actually
+        /// (re)subscribe. Seeded from <see cref="ABRConfig.subscribeProjects"/>
+        /// at startup, as a default for when nothing else is driving this
+        /// dynamically (e.g. no FE upstream to pick a project interactively).
+        /// </summary>
+        public string SubscribeProjectPath;
+
+        /// <summary>
+        /// Named state (within <see cref="SubscribeProjectPath"/>) to apply
+        /// for styling once subscribed -- empty means data-only mode (see
+        /// <see cref="DataManagerSubscriberChannel.SendStateAsync"/>). Like
+        /// <see cref="SubscribeProjectPath"/>, changing this alone does
+        /// nothing until <see cref="Subscribe"/> is called. Seeded from
+        /// <see cref="ABRConfig.subscribeStateName"/> at startup.
+        /// </summary>
+        public string SubscribeStateName;
+
+        private ISubscriberChannel _activeSubscription;
+
+        /// <summary>
+        /// (Re-)subscribes to whatever <see cref="SubscribeProjectPath"/>/
+        /// <see cref="SubscribeStateName"/> are currently set to, discarding
+        /// any prior subscription this method previously made first -- so
+        /// this instance only ever has one active project+state at a time,
+        /// no matter how many times it's called. Meant to be wired directly
+        /// to a UI Button's OnClick (its signature is a plain no-arg void
+        /// method for exactly that reason), so a person choosing a
+        /// project/state at runtime -- from a headset-side menu, say --
+        /// just sets the two fields above and presses "Subscribe". A no-op
+        /// (after discarding the prior subscription) if
+        /// <see cref="SubscribeProjectPath"/> is empty; that's the "waiting
+        /// for input" state at startup when abr.json doesn't provide a
+        /// default and nothing has set it yet.
+        /// </summary>
+        public void Subscribe()
+        {
+            _ = SubscribeInternalAsync();
+        }
+
+        private async Task SubscribeInternalAsync()
+        {
+            if (DataStore != null && _activeSubscription != null)
+            {
+                DataStore.Hub.Unsubscribe(_activeSubscription);
+                _activeSubscription = null;
+            }
+
+            if (string.IsNullOrEmpty(SubscribeProjectPath))
+            {
+                Debug.Log("Subscribe() called with no SubscribeProjectPath set -- waiting for one to be provided.");
+                return;
+            }
+
+            if (DataStore == null)
+            {
+                Debug.LogError($"Cannot subscribe to project \"{SubscribeProjectPath}\": this instance's DataStore is not enabled (set Config.dataStorePort)");
+                return;
+            }
+
+            bool available = await DataStore.Hub.EnsureAvailableAsync(SubscribeProjectPath);
+            if (!available)
+            {
+                Debug.LogError($"Could not subscribe to project \"{SubscribeProjectPath}\": not available locally and no reachable upstream has it");
+                return;
+            }
+
+            var channel = new DataManagerSubscriberChannel();
+            SubscribeResult result = await DataStore.Hub.SubscribeAsync(SubscribeProjectPath, channel);
+            if (!result.Success)
+            {
+                Debug.LogError($"Could not subscribe to project \"{SubscribeProjectPath}\": {result.ErrorMessage}");
+                return;
+            }
+
+            _activeSubscription = channel;
+            Debug.Log($"Subscribed to project \"{SubscribeProjectPath}\" (state \"{SubscribeStateName}\") via embedded DataStore");
         }
 
         /// <summary>
@@ -468,19 +553,26 @@ namespace IVLab.ABREngine
                         Upstream = upstream
                     });
 
-                    if (Config.subscribeProjects != null)
+                    // abr.json's subscribeProjects/subscribeStateName seed
+                    // the public SubscribeProjectPath/SubscribeStateName
+                    // fields as a default for when nothing else is driving
+                    // them dynamically (e.g. a headset-side picker, or a
+                    // remote "push to display" command) -- see Subscribe().
+                    // Only the first subscribeProjects entry is used, since
+                    // this instance now only ever has one active
+                    // subscription at a time.
+                    if (Config.subscribeProjects != null && Config.subscribeProjects.Length > 0)
                     {
-                        foreach (string projectPath in Config.subscribeProjects)
-                        {
-                            if (!string.IsNullOrEmpty(projectPath))
-                            {
-                                // Fire-and-forget: don't block Awake() on a
-                                // network round trip. SubscribeToProject logs
-                                // its own errors if this fails.
-                                _ = SubscribeToProject(projectPath);
-                            }
-                        }
+                        SubscribeProjectPath = Config.subscribeProjects[0];
                     }
+                    SubscribeStateName = Config.subscribeStateName;
+
+                    // Fire-and-forget: don't block Awake() on a network
+                    // round trip. A no-op (just logs) if
+                    // SubscribeProjectPath is still empty -- that's the
+                    // "waiting for input" state when abr.json doesn't
+                    // provide a default.
+                    Subscribe();
                 }
             }
             catch (Exception e)
@@ -498,12 +590,18 @@ namespace IVLab.ABREngine
                     string statePath = Config.stateFile;
                     LoadState<PathStateFileLoader>(statePath);
                 }
-                else if (Config.dataStorePort != 0 && !string.IsNullOrEmpty(Config.subscribeStateName))
+                else if (Config.dataStorePort != 0)
                 {
                     // Styling comes from a DataStore project subscription
-                    // instead (see DataManagerSubscriberChannel.SendStateAsync)
-                    // -- skip the HTTP fetch-on-startup and the websocket
-                    // poke-to-refetch notifier this old path uses.
+                    // instead (see Subscribe() and
+                    // DataManagerSubscriberChannel.SendStateAsync) -- skip
+                    // the HTTP fetch-on-startup and the websocket
+                    // poke-to-refetch notifier this old path uses. This
+                    // applies even if nothing is subscribed yet
+                    // (SubscribeProjectPath/SubscribeStateName can still be
+                    // empty, waiting for Subscribe() to be called) --
+                    // enabling the embedded DataStore at all means the
+                    // legacy HTTP path is fully superseded, not a fallback.
                 }
                 else
                 {

@@ -53,6 +53,15 @@ namespace IVLab.ABREngine.DataStore
         // project while one is already pending/warm gets the same task.
         private readonly ConcurrentDictionary<string, Task<bool>> subscriptions = new ConcurrentDictionary<string, Task<bool>>();
 
+        // Same dedup idea as `subscriptions`, but there's only ever one
+        // "active" chain at a time (not per-project), so a single field is
+        // enough. Stays connected indefinitely once established, the same
+        // way a project subscription does, so a later change to what's
+        // active upstream propagates down without this node's local
+        // subscribers needing to do anything.
+        private Task<bool> activeSubscription;
+        private readonly object activeSubscriptionLock = new object();
+
         public UpstreamLink(string host, int port, SubscriptionHub hub)
         {
             this.host = host;
@@ -173,6 +182,137 @@ namespace IVLab.ABREngine.DataStore
                     // Drop the dedup entry so a future cold access re-subscribes
                     // rather than being stuck waiting on a dead link forever.
                     subscriptions.TryRemove(projectPath, out _);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Ensure this node knows (by chaining a "subscribeactive"
+        /// connection upstream, if not already connected) what its upstream
+        /// considers active. Returns once the first replay has landed
+        /// locally and hub's active pointer has been set to match (true),
+        /// or once it's clear the upstream has nothing active either
+        /// (false).
+        /// </summary>
+        public Task<bool> EnsureActiveKnownAsync()
+        {
+            lock (activeSubscriptionLock)
+            {
+                if (activeSubscription == null)
+                {
+                    activeSubscription = SubscribeActiveToUpstreamAsync();
+                }
+                return activeSubscription;
+            }
+        }
+
+        private async Task<bool> SubscribeActiveToUpstreamAsync()
+        {
+            TcpClient client = new TcpClient();
+            NetworkStream stream;
+            try
+            {
+                await client.ConnectAsync(host, port).ConfigureAwait(false);
+                stream = client.GetStream();
+
+                await FrameIO.WriteStringAsync(stream, ProtocolTags.SubscribeActive).ConfigureAwait(false);
+
+                string ack = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                if (ack.StartsWith(ProtocolTags.ErrorPrefix, StringComparison.Ordinal))
+                {
+                    client.Dispose();
+                    lock (activeSubscriptionLock) { activeSubscription = null; }
+                    return false;
+                }
+            }
+            catch
+            {
+                client.Dispose();
+                lock (activeSubscriptionLock) { activeSubscription = null; }
+                return false;
+            }
+
+            var becameWarm = new TaskCompletionSource<bool>();
+            _ = Task.Run(() => ReadActiveLoopAsync(client, stream, becameWarm));
+            return await becameWarm.Task.ConfigureAwait(false);
+        }
+
+        private async Task ReadActiveLoopAsync(TcpClient client, NetworkStream stream, TaskCompletionSource<bool> becameWarm)
+        {
+            using (client)
+            {
+                bool signaledReplayComplete = false;
+                try
+                {
+                    while (true)
+                    {
+                        string tag = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                        switch (tag)
+                        {
+                            case ProtocolTags.ProjectInfo:
+                                {
+                                    string label = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                                    string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                                    await FrameIO.ReadBytesAsync(stream).ConfigureAwait(false);
+                                    await hub.IngestProjectInfoAsync(label, json).ConfigureAwait(false);
+                                }
+                                break;
+
+                            case ProtocolTags.KeyData:
+                                {
+                                    string label = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                                    string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                                    byte[] bindata = await FrameIO.ReadBytesAsync(stream).ConfigureAwait(false);
+                                    await hub.IngestKeyDataAsync(label, json, bindata).ConfigureAwait(false);
+                                }
+                                break;
+
+                            case ProtocolTags.State:
+                                {
+                                    string label = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                                    string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                                    await FrameIO.ReadBytesAsync(stream).ConfigureAwait(false);
+                                    await hub.IngestStateAsync(label, json).ConfigureAwait(false);
+                                    // In "active" mode every State frame IS
+                                    // (now) the active one -- this is how a
+                                    // project/state switch upstream
+                                    // propagates down through this link,
+                                    // with no separate "it changed" marker
+                                    // needed on the wire.
+                                    hub.SetActivePointer(label);
+                                }
+                                break;
+
+                            case ProtocolTags.Update:
+                                await hub.IngestUpdateAsync().ConfigureAwait(false);
+                                // Push the (by-now-fully-ingested) active
+                                // project/state out to any of this node's
+                                // own local "active" subscribers.
+                                await hub.NotifyActiveWrappersAsync().ConfigureAwait(false);
+                                if (!signaledReplayComplete)
+                                {
+                                    signaledReplayComplete = true;
+                                    becameWarm.TrySetResult(true);
+                                }
+                                break;
+
+                            default:
+                                // Protocol violation from upstream -- give up on this link.
+                                return;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Connection dropped (network hiccup, upstream restart, etc).
+                }
+                finally
+                {
+                    if (!signaledReplayComplete)
+                    {
+                        becameWarm.TrySetResult(false);
+                    }
+                    lock (activeSubscriptionLock) { activeSubscription = null; }
                 }
             }
         }

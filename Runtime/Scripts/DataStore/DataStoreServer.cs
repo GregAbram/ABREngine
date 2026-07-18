@@ -141,6 +141,41 @@ namespace IVLab.ABREngine.DataStore
                             await HandleSubscribeAsync(stream, cancelToken).ConfigureAwait(false);
                             break;
 
+                        case ProtocolTags.SubscribeActive:
+                            await HandleSubscribeActiveAsync(stream, cancelToken).ConfigureAwait(false);
+                            break;
+
+                        case ProtocolTags.SetActive:
+                            {
+                                string statePath = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+                                string sessionId = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+                                SubscribeResult result = await hub.SetActiveAsync(statePath, sessionId).ConfigureAwait(false);
+                                if (result.Success)
+                                {
+                                    await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
+                                }
+                                else
+                                {
+                                    await FrameIO.WriteStringAsync(stream, ProtocolTags.ErrorPrefix + result.ErrorMessage, cancelToken).ConfigureAwait(false);
+                                }
+                            }
+                            break;
+
+                        case ProtocolTags.AttachFE:
+                            {
+                                string sessionId = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+                                bool accepted = hub.TryAttachFE(sessionId);
+                                if (accepted)
+                                {
+                                    await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
+                                }
+                                else
+                                {
+                                    await FrameIO.WriteStringAsync(stream, ProtocolTags.ErrorPrefix + "another FE is attached", cancelToken).ConfigureAwait(false);
+                                }
+                            }
+                            break;
+
                         default:
                             // Any other tag is treated as a key data write, matching
                             // SocketDataListener's existing permissive convention.
@@ -276,6 +311,48 @@ namespace IVLab.ABREngine.DataStore
                 // Only reachable via a race between the HasProject check above
                 // and SubscribeAsync's own check; nothing in Phase 1 removes a
                 // project, so this is effectively unreachable today.
+                return;
+            }
+
+            try
+            {
+                await WaitForDisconnectAsync(stream, cancelToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                hub.Unsubscribe(channel);
+            }
+        }
+
+        private async Task HandleSubscribeActiveAsync(NetworkStream stream, CancellationToken cancelToken)
+        {
+            // Bare request -- no project path, that's the point (see
+            // ProtocolTags.SubscribeActive).
+            var channel = new TcpSubscriberChannel(stream);
+            SubscribeResult result;
+            try
+            {
+                // Mirrors HandleSubscribeAsync: the ack has to be written
+                // *before* SubscribeActiveAsync starts writing replay
+                // frames to this same stream.
+                bool available = await hub.EnsureActiveAvailableAsync().ConfigureAwait(false);
+                if (!available)
+                {
+                    await FrameIO.WriteStringAsync(stream, ProtocolTags.ErrorPrefix + "no active project", cancelToken).ConfigureAwait(false);
+                    return;
+                }
+
+                await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
+                result = await hub.SubscribeActiveAsync(channel).ConfigureAwait(false);
+            }
+            catch
+            {
+                hub.Unsubscribe(channel);
+                return;
+            }
+
+            if (!result.Success)
+            {
                 return;
             }
 

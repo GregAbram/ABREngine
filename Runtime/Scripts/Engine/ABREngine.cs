@@ -254,12 +254,15 @@ namespace IVLab.ABREngine
 
         /// <summary>
         /// Project path (e.g. "Organization/Dataset") this instance should
-        /// subscribe to via its embedded DataStore. Setting this alone does
-        /// nothing -- call <see cref="Subscribe"/> (e.g. wire it to a UI
-        /// Button, or a headset-side project/state picker) to actually
-        /// (re)subscribe. Seeded from <see cref="ABRConfig.subscribeProjects"/>
-        /// at startup, as a default for when nothing else is driving this
-        /// dynamically (e.g. no FE upstream to pick a project interactively).
+        /// subscribe to via its embedded DataStore -- takes precedence over
+        /// following whatever's active (see <see cref="Subscribe"/>) if
+        /// set. Setting this alone does nothing -- call
+        /// <see cref="Subscribe"/> (e.g. wire it to a UI Button, or a
+        /// headset-side project/state picker) to actually (re)subscribe.
+        /// Seeded from <see cref="ABRConfig.subscribeProjects"/> at
+        /// startup, as a default for when nothing else is driving this
+        /// dynamically (e.g. no FE upstream to pick a project
+        /// interactively).
         /// </summary>
         public string SubscribeProjectPath;
 
@@ -276,19 +279,27 @@ namespace IVLab.ABREngine
         private ISubscriberChannel _activeSubscription;
 
         /// <summary>
-        /// (Re-)subscribes to whatever <see cref="SubscribeProjectPath"/>/
-        /// <see cref="SubscribeStateName"/> are currently set to, discarding
-        /// any prior subscription this method previously made first -- so
-        /// this instance only ever has one active project+state at a time,
-        /// no matter how many times it's called. Meant to be wired directly
-        /// to a UI Button's OnClick (its signature is a plain no-arg void
-        /// method for exactly that reason), so a person choosing a
-        /// project/state at runtime -- from a headset-side menu, say --
-        /// just sets the two fields above and presses "Subscribe". A no-op
-        /// (after discarding the prior subscription) if
-        /// <see cref="SubscribeProjectPath"/> is empty; that's the "waiting
-        /// for input" state at startup when abr.json doesn't provide a
-        /// default and nothing has set it yet.
+        /// (Re-)subscribes according to a fixed priority, discarding any
+        /// prior subscription this method previously made first -- so this
+        /// instance only ever has one active project+state at a time, no
+        /// matter how many times it's called:
+        /// <list type="number">
+        /// <item><description><see cref="SubscribeProjectPath"/>/<see cref="SubscribeStateName"/>,
+        /// if SubscribeProjectPath is set -- an explicit choice always wins.</description></item>
+        /// <item><description>Otherwise, whatever project+state a FE has
+        /// designated "active" on this node's DataStore (or one of its
+        /// upstreams) -- see <see cref="SubscriptionHub.SubscribeActiveAsync"/>.
+        /// Tracks it live: if the active designation later changes, this
+        /// subscription follows without needing Subscribe() called again.</description></item>
+        /// <item><description>Otherwise (no FE involved at all), falls back
+        /// to the bundled canned state, if <see cref="ABRConfig.loadStateOnStart"/>
+        /// names one -- see <see cref="LoadCannedStateFallback"/>.</description></item>
+        /// </list>
+        /// Meant to be wired directly to a UI Button's OnClick (its
+        /// signature is a plain no-arg void method for exactly that
+        /// reason), so a person choosing a project/state at runtime -- from
+        /// a headset-side menu, say -- just sets the two fields above and
+        /// presses "Subscribe".
         /// </summary>
         public void Subscribe()
         {
@@ -305,7 +316,21 @@ namespace IVLab.ABREngine
 
             if (string.IsNullOrEmpty(SubscribeProjectPath))
             {
-                Debug.Log("Subscribe() called with no SubscribeProjectPath set -- waiting for one to be provided.");
+                if (DataStore != null && await DataStore.Hub.EnsureActiveAvailableAsync().ConfigureAwait(false))
+                {
+                    var activeChannel = new DataManagerSubscriberChannel();
+                    SubscribeResult activeResult = await DataStore.Hub.SubscribeActiveAsync(activeChannel).ConfigureAwait(false);
+                    if (activeResult.Success)
+                    {
+                        _activeSubscription = activeChannel;
+                        Debug.Log("Subscribed to whatever's active via embedded DataStore");
+                        return;
+                    }
+                    Debug.LogError($"Could not subscribe to the active project: {activeResult.ErrorMessage}");
+                }
+
+                Debug.Log("No SubscribeProjectPath set and nothing active upstream -- falling back to the bundled canned state, if any (see Config.loadStateOnStart).");
+                LoadCannedStateFallback();
                 return;
             }
 
@@ -332,6 +357,43 @@ namespace IVLab.ABREngine
 
             _activeSubscription = channel;
             Debug.Log($"Subscribed to project \"{SubscribeProjectPath}\" (state \"{SubscribeStateName}\") via embedded DataStore");
+        }
+
+        /// <summary>
+        /// Loads the bundled canned state named by
+        /// <see cref="ABRConfig.loadStateOnStart"/> (tried first from
+        /// Resources, falling back to StreamingAssets), if one is
+        /// configured -- the "no FE involved" fallback
+        /// <see cref="SubscribeInternalAsync"/> uses when there's no
+        /// explicit SubscribeProjectPath and nothing active upstream
+        /// either. Also called unconditionally at the end of Awake() below
+        /// for callers who just want a bundled default with no DataStore
+        /// involved at all -- calling it twice in that overlap case is
+        /// harmless (same content, loaded again).
+        /// </summary>
+        private void LoadCannedStateFallback()
+        {
+            if (!(Config.loadStateOnStart?.Length > 0))
+            {
+                return;
+            }
+            try
+            {
+                LoadState<ResourceStateFileLoader>(Config.loadStateOnStart);
+                if (previouslyLoadedState == null)
+                {
+                    throw new Exception();
+                }
+                else
+                {
+                    Debug.Log($"Loaded state `{Config.loadStateOnStart}` from Resources");
+                }
+            }
+            catch (Exception)
+            {
+                LoadState<PathStateFileLoader>(Path.Combine(streamingAssetsPath, Config.loadStateOnStart));
+                Debug.Log($"Loaded state `{Config.loadStateOnStart}` from StreamingAssets");
+            }
         }
 
         /// <summary>
@@ -620,26 +682,7 @@ namespace IVLab.ABREngine
             IsInitialized = true;
 
             // If a state in streaming assets or resources is specified, load it
-            if (Config.loadStateOnStart?.Length > 0)
-            {
-                try
-                {
-                    LoadState<ResourceStateFileLoader>(Config.loadStateOnStart);
-                    if (previouslyLoadedState == null)
-                    {
-                        throw new Exception();
-                    }
-                    else
-                    {
-                        Debug.Log($"Loaded state `{Config.loadStateOnStart}` from Resources");
-                    }
-                }
-                catch (Exception)
-                {
-                    LoadState<PathStateFileLoader>(Path.Combine(streamingAssetsPath, Config.loadStateOnStart));
-                    Debug.Log($"Loaded state `{Config.loadStateOnStart}` from StreamingAssets");
-                }
-            }
+            LoadCannedStateFallback();
         }
 
         /// <summary>

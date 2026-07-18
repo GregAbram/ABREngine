@@ -45,6 +45,12 @@ internal class Program
                 return await RunListKeyDataAsync(args).ConfigureAwait(false);
             case "pushstate":
                 return await RunPushStateAsync(args).ConfigureAwait(false);
+            case "subscribeactive":
+                return await RunSubscribeActiveAsync(args).ConfigureAwait(false);
+            case "setactive":
+                return await RunSetActiveAsync(args).ConfigureAwait(false);
+            case "attachfe":
+                return await RunAttachFEAsync(args).ConfigureAwait(false);
             default:
                 PrintUsage();
                 return 1;
@@ -60,6 +66,9 @@ internal class Program
         Console.Error.WriteLine("  DataStore liststates <host> <port> <projectPath>");
         Console.Error.WriteLine("  DataStore listkeydata <host> <port> <projectPath>");
         Console.Error.WriteLine("  DataStore pushstate <host> <port> <statePath> <json>");
+        Console.Error.WriteLine("  DataStore subscribeactive <host> <port>");
+        Console.Error.WriteLine("  DataStore setactive <host> <port> <statePath> <sessionId>");
+        Console.Error.WriteLine("  DataStore attachfe <host> <port> <sessionId>");
     }
 
     private static int RunServe(string[] args)
@@ -166,6 +175,48 @@ internal class Program
         string json = args[4];
 
         await TestSubscriber.PushStateAsync(host, port, statePath, json).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task<int> RunSubscribeActiveAsync(string[] args)
+    {
+        if (args.Length < 3 || !int.TryParse(args[2], out int port))
+        {
+            PrintUsage();
+            return 1;
+        }
+        string host = args[1];
+
+        await TestSubscriber.SubscribeActiveAsync(host, port).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task<int> RunSetActiveAsync(string[] args)
+    {
+        if (args.Length < 5 || !int.TryParse(args[2], out int port))
+        {
+            PrintUsage();
+            return 1;
+        }
+        string host = args[1];
+        string statePath = args[3];
+        string sessionId = args[4];
+
+        await TestSubscriber.SetActiveAsync(host, port, statePath, sessionId).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task<int> RunAttachFEAsync(string[] args)
+    {
+        if (args.Length < 4 || !int.TryParse(args[2], out int port))
+        {
+            PrintUsage();
+            return 1;
+        }
+        string host = args[1];
+        string sessionId = args[3];
+
+        await TestSubscriber.AttachFEAsync(host, port, sessionId).ConfigureAwait(false);
         return 0;
     }
 }

@@ -174,6 +174,103 @@ internal static class TestSubscriber
         }
     }
 
+    public static async Task SubscribeActiveAsync(string host, int port)
+    {
+        using TcpClient client = new TcpClient();
+        await client.ConnectAsync(host, port).ConfigureAwait(false);
+        NetworkStream stream = client.GetStream();
+
+        await FrameIO.WriteStringAsync(stream, ProtocolTags.SubscribeActive).ConfigureAwait(false);
+
+        string ack = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        if (ack.StartsWith(ProtocolTags.ErrorPrefix, StringComparison.Ordinal))
+        {
+            Console.WriteLine($"subscribeactive failed: {ack}");
+            return;
+        }
+
+        Console.WriteLine("Subscribed to whatever's active. Waiting for frames (Ctrl+C to stop)...");
+
+        while (true)
+        {
+            string tag;
+            try
+            {
+                tag = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Connection closed by server.");
+                return;
+            }
+
+            switch (tag)
+            {
+                case ProtocolTags.ProjectInfo:
+                    {
+                        string label = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                        string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                        await FrameIO.ReadBytesAsync(stream).ConfigureAwait(false);
+                        Console.WriteLine($"[projectinfo] {label}: {json}");
+                    }
+                    break;
+
+                case ProtocolTags.KeyData:
+                    {
+                        string label = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                        string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                        byte[] bindata = await FrameIO.ReadBytesAsync(stream).ConfigureAwait(false);
+                        Console.WriteLine($"[keydata] {label}: {json.Length} json chars, {bindata.Length} binary bytes");
+                    }
+                    break;
+
+                case ProtocolTags.State:
+                    {
+                        string label = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                        string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                        await FrameIO.ReadBytesAsync(stream).ConfigureAwait(false);
+                        Console.WriteLine($"[active state] {label}: {json}");
+                    }
+                    break;
+
+                case ProtocolTags.Update:
+                    Console.WriteLine("[update] -- end of replay / live flush --");
+                    break;
+
+                default:
+                    Console.WriteLine($"Unexpected tag \"{tag}\" -- stopping.");
+                    return;
+            }
+        }
+    }
+
+    public static async Task SetActiveAsync(string host, int port, string statePath, string sessionId)
+    {
+        using TcpClient client = new TcpClient();
+        await client.ConnectAsync(host, port).ConfigureAwait(false);
+        NetworkStream stream = client.GetStream();
+
+        await FrameIO.WriteStringAsync(stream, ProtocolTags.SetActive).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, statePath).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, sessionId).ConfigureAwait(false);
+
+        string ack = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        Console.WriteLine($"setactive \"{statePath}\" (session \"{sessionId}\") -> {ack}");
+    }
+
+    public static async Task AttachFEAsync(string host, int port, string sessionId)
+    {
+        using TcpClient client = new TcpClient();
+        await client.ConnectAsync(host, port).ConfigureAwait(false);
+        NetworkStream stream = client.GetStream();
+
+        await FrameIO.WriteStringAsync(stream, ProtocolTags.AttachFE).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, sessionId).ConfigureAwait(false);
+
+        string ack = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        Console.WriteLine($"attachfe (session \"{sessionId}\") -> {ack}");
+    }
+
     public static async Task PushStateAsync(string host, int port, string statePath, string json)
     {
         using TcpClient client = new TcpClient();

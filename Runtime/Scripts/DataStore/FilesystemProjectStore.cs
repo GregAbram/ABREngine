@@ -116,6 +116,28 @@ namespace IVLab.ABREngine.DataStore
             }
         }
 
+        public bool TryGetKeyData(string keyDataPath, out string json, out byte[] binData)
+        {
+            string projectPath = ProjectPaths.GetProjectPath(keyDataPath);
+            string name = ProjectPaths.GetName(keyDataPath);
+
+            lock (fileLock)
+            {
+                string keyDataDir = KeyDataDir(projectPath);
+                string jsonFile = Path.Combine(keyDataDir, name + ".json");
+                if (!File.Exists(jsonFile))
+                {
+                    json = null;
+                    binData = null;
+                    return false;
+                }
+                json = File.ReadAllText(jsonFile);
+                string binFile = Path.Combine(keyDataDir, name + ".bin");
+                binData = File.Exists(binFile) ? File.ReadAllBytes(binFile) : new byte[0];
+                return true;
+            }
+        }
+
         public bool TryGetState(string statePath, out string json)
         {
             string projectPath = ProjectPaths.GetProjectPath(statePath);

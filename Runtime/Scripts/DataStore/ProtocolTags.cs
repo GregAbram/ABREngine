@@ -151,6 +151,19 @@ namespace IVLab.ABREngine.DataStore
         /// </summary>
         public const string GetVisAsset = "getvisasset";
 
+        /// <summary>
+        /// Request a histogram computed from one KeyData object's binary,
+        /// so a consumer (e.g. abr_server) never needs direct filesystem
+        /// access to the DataStore's storage -- everything about a dataset,
+        /// including derived quantities like this, comes back over the
+        /// wire. Request: [tag][label=keyDataPath][variableLabel][int32
+        /// bins]. Chains upstream first via EnsureAvailableAsync, the same
+        /// as GetState. Reply is the ack frame; if "ok", one length-prefixed
+        /// json string follows, shaped {"histogram":[{"binMax":..,
+        /// "items":..}, ...], "keyDataMin":.., "keyDataMax":..}.
+        /// </summary>
+        public const string GetHistogram = "gethistogram";
+
         /// <summary>Literal ack string for a successful request.</summary>
         public const string Ok = "ok";
 

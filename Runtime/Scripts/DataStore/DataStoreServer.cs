@@ -167,6 +167,10 @@ namespace IVLab.ABREngine.DataStore
                             await HandleGetStateAsync(stream, cancelToken).ConfigureAwait(false);
                             break;
 
+                        case ProtocolTags.GetHistogram:
+                            await HandleGetHistogramAsync(stream, cancelToken).ConfigureAwait(false);
+                            break;
+
                         case ProtocolTags.Subscribe:
                             await HandleSubscribeAsync(stream, cancelToken).ConfigureAwait(false);
                             break;
@@ -377,6 +381,30 @@ namespace IVLab.ABREngine.DataStore
 
             await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
             await FrameIO.WriteStringAsync(stream, json, cancelToken).ConfigureAwait(false);
+        }
+
+        private async Task HandleGetHistogramAsync(NetworkStream stream, CancellationToken cancelToken)
+        {
+            string keyDataPath = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+            string variableLabel = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+            int bins = await FrameIO.ReadInt32Async(stream, cancelToken).ConfigureAwait(false);
+            string projectPath = ProjectPaths.GetProjectPath(keyDataPath);
+
+            bool available = await hub.EnsureAvailableAsync(projectPath).ConfigureAwait(false);
+            if (!available || !hub.Store.TryGetKeyData(keyDataPath, out string json, out byte[] binData))
+            {
+                await FrameIO.WriteStringAsync(stream, ProtocolTags.ErrorPrefix + $"unknown key data \"{keyDataPath}\"", cancelToken).ConfigureAwait(false);
+                return;
+            }
+
+            if (!HistogramComputer.TryCompute(json, binData, variableLabel, bins, out string resultJson, out string errorMessage))
+            {
+                await FrameIO.WriteStringAsync(stream, ProtocolTags.ErrorPrefix + errorMessage, cancelToken).ConfigureAwait(false);
+                return;
+            }
+
+            await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
+            await FrameIO.WriteStringAsync(stream, resultJson, cancelToken).ConfigureAwait(false);
         }
 
         private async Task HandleSubscribeAsync(NetworkStream stream, CancellationToken cancelToken)

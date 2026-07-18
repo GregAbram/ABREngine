@@ -48,6 +48,8 @@ internal class Program
                 return await RunPushStateAsync(args).ConfigureAwait(false);
             case "getstate":
                 return await RunGetStateAsync(args).ConfigureAwait(false);
+            case "gethistogram":
+                return await RunGetHistogramAsync(args).ConfigureAwait(false);
             case "listvisassets":
                 return await RunListVisAssetsAsync(args).ConfigureAwait(false);
             case "getvisasset":
@@ -77,6 +79,7 @@ internal class Program
         Console.Error.WriteLine("  DataStore listkeydata <host> <port> <projectPath>");
         Console.Error.WriteLine("  DataStore pushstate <host> <port> <statePath> <json>");
         Console.Error.WriteLine("  DataStore getstate <host> <port> <statePath>");
+        Console.Error.WriteLine("  DataStore gethistogram <host> <port> <keyDataPath> <variableLabel> <bins>");
         Console.Error.WriteLine("  DataStore listvisassets <host> <port>");
         Console.Error.WriteLine("  DataStore getvisasset <host> <port> <uuid>");
         Console.Error.WriteLine("  DataStore pushvisasset <host> <port> <uuid> <json> [filename filepath]...");
@@ -211,6 +214,21 @@ internal class Program
         string statePath = args[3];
 
         await TestSubscriber.GetStateAsync(host, port, statePath).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task<int> RunGetHistogramAsync(string[] args)
+    {
+        if (args.Length < 6 || !int.TryParse(args[2], out int port) || !int.TryParse(args[5], out int bins))
+        {
+            PrintUsage();
+            return 1;
+        }
+        string host = args[1];
+        string keyDataPath = args[3];
+        string variableLabel = args[4];
+
+        await TestSubscriber.GetHistogramAsync(host, port, keyDataPath, variableLabel, bins).ConfigureAwait(false);
         return 0;
     }
 

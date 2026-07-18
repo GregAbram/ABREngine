@@ -114,6 +114,15 @@ namespace IVLab.ABREngine.DataStore
         /// </summary>
         bool TryGetState(string statePath, out string json);
 
+        /// <summary>
+        /// Attempt to read back one key data object's json header + binary
+        /// payload, without pulling the rest of its project along with it
+        /// -- e.g. so the DataStore can compute a histogram from just this
+        /// one KeyData's binary on request, instead of abr_server reading
+        /// it directly off disk.
+        /// </summary>
+        bool TryGetKeyData(string keyDataPath, out string json, out byte[] binData);
+
         /// <summary>Attempt to read back everything currently known about a project, for replaying to a new subscriber.</summary>
         bool TryReplayProject(string projectPath, out ProjectSnapshot snapshot);
     }

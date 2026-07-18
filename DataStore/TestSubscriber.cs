@@ -291,6 +291,28 @@ internal static class TestSubscriber
         Console.WriteLine($"getstate \"{statePath}\": {json}");
     }
 
+    public static async Task GetHistogramAsync(string host, int port, string keyDataPath, string variableLabel, int bins)
+    {
+        using TcpClient client = new TcpClient();
+        await client.ConnectAsync(host, port).ConfigureAwait(false);
+        NetworkStream stream = client.GetStream();
+
+        await FrameIO.WriteStringAsync(stream, ProtocolTags.GetHistogram).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, keyDataPath).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, variableLabel).ConfigureAwait(false);
+        await FrameIO.WriteInt32Async(stream, bins).ConfigureAwait(false);
+
+        string status = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        if (status.StartsWith(ProtocolTags.ErrorPrefix, StringComparison.Ordinal))
+        {
+            Console.WriteLine($"gethistogram failed: {status}");
+            return;
+        }
+
+        string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        Console.WriteLine($"gethistogram \"{keyDataPath}\" ({variableLabel}, {bins} bins): {json}");
+    }
+
     public static async Task ListVisAssetsAsync(string host, int port)
     {
         using TcpClient client = new TcpClient();

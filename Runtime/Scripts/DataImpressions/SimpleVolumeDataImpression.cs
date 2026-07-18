@@ -219,21 +219,10 @@ namespace IVLab.ABREngine
                     origin + new Vector3(xdim, 0,    zdim),
                     origin + new Vector3(0,    0,    zdim)
                 };
-#if true
                 for (int i = 0; i < 8; i++)
                 {
                     renderInfo.vertices[i].z = -renderInfo.vertices[i].z;
                 }
-#else
-                Vector3 center = ABREngine.Instance.Config.center;
-                float scale = (float)ABREngine.Instance.Config.scale;
-
-                for (int i = 0; i < 8; i++)
-                {
-                    renderInfo.vertices[i] = (renderInfo.vertices[i] - center) * scale;
-                    renderInfo.vertices[i].z = -renderInfo.vertices[i].z;
-                }
-#endif
 #else
                 Vector3 center = renderInfo.bounds.center;
                 Vector3 extents = renderInfo.bounds.extents;

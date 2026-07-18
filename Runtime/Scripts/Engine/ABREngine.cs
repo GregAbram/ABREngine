@@ -259,7 +259,7 @@ namespace IVLab.ABREngine
         /// set. Setting this alone does nothing -- call
         /// <see cref="Subscribe"/> (e.g. wire it to a UI Button, or a
         /// headset-side project/state picker) to actually (re)subscribe.
-        /// Seeded from <see cref="ABRConfig.subscribeProjects"/> at
+        /// Seeded from <see cref="ABRConfig.subscribeProject"/> at
         /// startup, as a default for when nothing else is driving this
         /// dynamically (e.g. no FE upstream to pick a project
         /// interactively).
@@ -618,17 +618,14 @@ namespace IVLab.ABREngine
                         Upstream = upstream
                     });
 
-                    // abr.json's subscribeProjects/subscribeStateName seed
+                    // abr.json's subscribeProject/subscribeStateName seed
                     // the public SubscribeProjectPath/SubscribeStateName
                     // fields as a default for when nothing else is driving
                     // them dynamically (e.g. a headset-side picker, or a
                     // remote "push to display" command) -- see Subscribe().
-                    // Only the first subscribeProjects entry is used, since
-                    // this instance now only ever has one active
-                    // subscription at a time.
-                    if (Config.subscribeProjects != null && Config.subscribeProjects.Length > 0)
+                    if (!string.IsNullOrEmpty(Config.subscribeProject))
                     {
-                        SubscribeProjectPath = Config.subscribeProjects[0];
+                        SubscribeProjectPath = Config.subscribeProject;
                     }
                     SubscribeStateName = Config.subscribeStateName;
 

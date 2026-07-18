@@ -47,16 +47,24 @@ namespace IVLab.ABREngine
                 if (_instance != null) return _instance;
 
                 // Load by type name, e.g., "GameSettings" -> Assets/Resources/GameSettings.asset
-                //_instance = Resources.Load<ABRConfig>(typeof(ABRConfig).Name);
-                _instance = ScriptableObject.CreateInstance<ABRConfig>();
+                // -- lets a developer bake config values (dataStorePort,
+                // mediaPath, etc.) into a persistent asset via this class's
+                // CreateAssetMenu, for platforms where abr.json can't be
+                // loaded at runtime (e.g. Android/Quest builds -- Setup()
+                // below silently no-ops on a failed file read, leaving
+                // whatever's already on this instance as the effective
+                // config).
+                _instance = Resources.Load<ABRConfig>(typeof(ABRConfig).Name);
 
                 if (_instance == null)
                 {
-                    Debug.LogError(
-                        $"ScriptableSingleton<{typeof(ABRConfig).Name}>: No asset found in Resources.\n" +
-                        $"Create one via CreateAssetMenu and place it at:\n" +
+                    Debug.Log(
+                        $"No {typeof(ABRConfig).Name} asset found in Resources -- using a blank runtime default.\n" +
+                        $"To bake config values into the build instead of relying on abr.json, create one via " +
+                        $"ABR/ABR Configuration and place it at:\n" +
                         $"Assets/Resources/{typeof(ABRConfig).Name}.asset"
                     );
+                    _instance = ScriptableObject.CreateInstance<ABRConfig>();
                 }
 
                 return _instance;
@@ -87,16 +95,13 @@ namespace IVLab.ABREngine
             public string mediaDirectory;
             public string serverURL;
             public string stateFile;
-            public jvector center;
-            public jvector rotation;
-            public double scale;
             public jvector defaultColor;
             public jvector hiliteColor;
             public jvector nanColor;
             public int dataListenerPort;
             public RemoteDataSource[] remotes;
             public int dataStorePort;
-            public string[] subscribeProjects;
+            public string subscribeProject;
             public string subscribeStateName;
         };
 
@@ -201,15 +206,18 @@ namespace IVLab.ABREngine
         public RemoteDataSource[] remotes;
 
         /// <summary>
-        ///     Project path(s) (e.g. "Organization/Dataset") to
-        ///     automatically subscribe to via this node's embedded
-        ///     DataStore on startup -- see <see cref="ABREngine.SubscribeToProject"/>.
-        ///     Requires <see cref="dataStorePort"/> to be set. Each
-        ///     subscription lazily chains through <see cref="remotes"/> if
-        ///     the project isn't already available locally.
+        ///     Project path (e.g. "Organization/Dataset") to automatically
+        ///     subscribe to via this node's embedded DataStore on startup
+        ///     -- see <see cref="ABREngine.SubscribeToProject"/>. Requires
+        ///     <see cref="dataStorePort"/> to be set. The subscription
+        ///     lazily chains through <see cref="remotes"/> if the project
+        ///     isn't already available locally. Just a boot-time default --
+        ///     leave empty to instead follow whatever an FE has marked
+        ///     "active", or let an in-game menu set
+        ///     <see cref="ABREngine.SubscribeProjectPath"/> at runtime.
         /// </summary>
-        [Tooltip("Project path(s) to automatically subscribe to via this node's embedded DataStore on startup. Requires dataStorePort to be set.")]
-        public string[] subscribeProjects;
+        [Tooltip("Project path to automatically subscribe to via this node's embedded DataStore on startup. Requires dataStorePort to be set.")]
+        public string subscribeProject;
 
         /// <summary>
         ///     The single named visualization state (styling: which KeyData
@@ -223,22 +231,6 @@ namespace IVLab.ABREngine
         /// </summary>
         [Tooltip("The single named state (from a subscribed project) to apply for styling. Leave empty for data-only mode.")]
         public string subscribeStateName;
-
-        /// <summary>
-        /// Deprecated manual override for scaling incoming data, used only
-        /// as a fallback when a dataset has no project.json (see <see
-        /// cref="ProjectInfo"/>) to supply its true data-space bounds.
-        /// Applies a uniform scale and translation
-        /// (<c>(vertex - center) * scale</c>) to the whole
-        /// DataImpressionGroup. Prefer sending project.json from the data
-        /// source instead of configuring this by hand.
-        /// </summary>
-        [Obsolete("Deprecated fallback for when a dataset has no project.json. Prefer having the data source provide project.json (see ProjectInfo).")]
-        public double scale;
-        [Obsolete("Deprecated fallback for when a dataset has no project.json. Prefer having the data source provide project.json (see ProjectInfo).")]
-        public Vector3 center;
-        [Obsolete("Unused: rotation is no longer applied at the data level; rotate the box GameObject the ABREngine component lives on instead.")]
-        public Vector3 rotation;
 
         /// <summary>
         ///     Default bounds for datasets when showing (in Unity world coordinates)
@@ -437,16 +429,6 @@ namespace IVLab.ABREngine
                 cfg.defaultColor = new jvector() { x = defaultColor.r, y = defaultColor.g, z = defaultColor.b };
                 cfg.hiliteColor = new jvector() { x = hiliteColor.r, y = hiliteColor.g, z = hiliteColor.b };
                 cfg.nanColor = new jvector() { x = defaultNanColor.r, y = defaultNanColor.g, z = defaultNanColor.b };
-                // center/rotation are deprecated and commonly omitted from a
-                // config file entirely -- unlike the color fields above,
-                // these were never pre-seeded, so an abr.json without them
-                // left cfg.center/cfg.rotation null. That threw a
-                // NullReferenceException a few lines down (cfg.center.x)
-                // which the catch below silently swallowed, aborting every
-                // assignment after it -- including dataStorePort and
-                // friends, regardless of what the JSON actually said.
-                cfg.center = new jvector() { x = center.x, y = center.y, z = center.z };
-                cfg.rotation = new jvector() { x = rotation.x, y = rotation.y, z = rotation.z };
                 cfg.dataListenerPort = dataListenerPort;
                 cfg.dataStorePort = dataStorePort;
 
@@ -456,16 +438,13 @@ namespace IVLab.ABREngine
                 mediaPath = cfg.mediaDirectory;
                 serverUrl = cfg.serverURL;
                 stateFile = cfg.stateFile;
-                center = new Vector3(cfg.center.x, cfg.center.y, cfg.center.z);
-                rotation = new Vector3(cfg.rotation.x, cfg.rotation.y, cfg.rotation.z);
-                scale = cfg.scale;
                 defaultColor = new Color(cfg.defaultColor.x, cfg.defaultColor.y, cfg.defaultColor.z)    ;
                 hiliteColor = new Color(cfg.hiliteColor.x, cfg.hiliteColor.y, cfg.hiliteColor.z);
                 defaultNanColor = new Color(cfg.nanColor.x, cfg.nanColor.y, cfg.nanColor.z);
                 dataListenerPort = cfg.dataListenerPort;
                 remotes = cfg.remotes;
                 dataStorePort = cfg.dataStorePort;
-                subscribeProjects = cfg.subscribeProjects;
+                subscribeProject = cfg.subscribeProject;
                 subscribeStateName = cfg.subscribeStateName;
 
                 if (mediaPath.StartsWith("ABR_ROOT"))

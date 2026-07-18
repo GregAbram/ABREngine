@@ -128,6 +128,17 @@ namespace IVLab.ABREngine
             // Afterwards, try the resources folder
             visAssetFetchers.Add(new ResourceVisAssetFetcher());
 
+            // Then, try the embedded DataStore (and its upstream chain) --
+            // catches VisAssets that only exist because abr_server or
+            // another Unity instance pushed them (e.g. a user-authored
+            // "local" colormap never published to the public library), not
+            // just ones reachable over plain HTTP.
+            if (ABREngine.Instance.Config.dataStorePort != 0)
+            {
+                Debug.Log("Allowing loading of VisAssets from the embedded DataStore");
+                visAssetFetchers.Add(new DataStoreVisAssetFetcher(this.appDataPath));
+            }
+
             // ... and lastly check out the VisAsset server, if present
             if (ABREngine.Instance.Config.visAssetServerUrl?.Length > 0)
             {

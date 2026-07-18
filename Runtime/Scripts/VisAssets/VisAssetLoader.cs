@@ -26,6 +26,7 @@ using UnityEngine;
 
 using Newtonsoft.Json.Linq;
 using IVLab.Utilities;
+using IVLab.ABREngine.DataStore;
 
 namespace IVLab.ABREngine
 {
@@ -255,6 +256,93 @@ namespace IVLab.ABREngine
 
 
 
+
+
+    /// <summary>
+    /// Fetch VisAssets through the embedded DataStore (see
+    /// ABREngine.Instance.DataStore), chaining to its upstream if this node
+    /// doesn't have the VisAsset locally. Exists alongside
+    /// HttpVisAssetFetcher, not instead of it: HttpVisAssetFetcher only
+    /// knows how to reach the public VisAsset library
+    /// (Config.visAssetServerUrl); this fetcher is for VisAssets that only
+    /// exist because abr_server (or another Unity instance) pushed them
+    /// into the DataStore -- e.g. a user-authored "local" colormap that was
+    /// never published anywhere else (see abr_server's
+    /// visasset_manager.save_from_local/_push_visasset_to_datastore). Talks
+    /// to the embedded node's SubscriptionHub directly, in-process -- no
+    /// socket round trip to itself needed, since this Unity instance
+    /// already IS a DataStore node when this fetcher is registered.
+    /// </summary>
+    public class DataStoreVisAssetFetcher : IVisAssetFetcher
+    {
+        private string _appDataPath;
+        private FilePathVisAssetFetcher _fpFetcher;
+        private HashSet<Guid> _fetched = new HashSet<Guid>();
+        public string VisAssetJson { get; }
+
+        public DataStoreVisAssetFetcher(string appDataPath)
+        {
+            VisAssetJson = ABRConfig.Consts.VisAssetJson;
+            _appDataPath = appDataPath;
+            _fpFetcher = new FilePathVisAssetFetcher(appDataPath);
+        }
+
+        public string GetArtifactJsonPath(Guid uuid)
+        {
+            return _fpFetcher.GetArtifactJsonPath(uuid);
+        }
+
+        public JObject GetArtifactJson(Guid uuid)
+        {
+            if (!_fetched.Contains(uuid))
+            {
+                bool success = FetchAndCacheVisAsset(uuid).Result;
+                if (!success)
+                {
+                    return null;
+                }
+                _fetched.Add(uuid);
+            }
+            return _fpFetcher.GetArtifactJson(uuid);
+        }
+
+        public Texture2D GetColormapTexture(Guid uuid) => _fpFetcher.GetColormapTexture(uuid);
+        public GameObject GetGlyphGameObject(Guid uuid, JObject lodJson) => _fpFetcher.GetGlyphGameObject(uuid, lodJson);
+        public Texture2D GetGlyphNormalMapTexture(Guid uuid, JObject lodJson) => _fpFetcher.GetGlyphNormalMapTexture(uuid, lodJson);
+        public Texture2D GetLineTexture(Guid uuid) => _fpFetcher.GetLineTexture(uuid);
+        public Texture2D GetSurfaceTexture(Guid uuid) => _fpFetcher.GetSurfaceTexture(uuid);
+        public Texture2D GetSurfaceNormalMap(Guid uuid) => _fpFetcher.GetSurfaceNormalMap(uuid);
+
+        // Mirrors HttpVisAssetFetcher.DownloadVisAsset's shape, but pulls
+        // through the embedded DataStore node instead of an HTTP library --
+        // the DataStore already hands back the whole bundle (json + every
+        // file) in one call, so there's no separate "figure out which files
+        // to fetch" step like the HTTP fetcher needs.
+        private async Task<bool> FetchAndCacheVisAsset(Guid uuid)
+        {
+            SubscriptionHub hub = ABREngine.Instance.DataStore?.Hub;
+            if (hub == null)
+            {
+                return false;
+            }
+
+            string uuidStr = uuid.ToString();
+            bool available = await hub.EnsureVisAssetAvailableAsync(uuidStr).ConfigureAwait(false);
+            if (!available || !hub.VisAssets.TryGetVisAsset(uuidStr, out VisAssetEntry entry))
+            {
+                return false;
+            }
+
+            string vaDir = Path.Combine(_appDataPath, uuidStr);
+            Directory.CreateDirectory(vaDir);
+            File.WriteAllText(Path.Combine(vaDir, VisAssetJson), entry.Json);
+            foreach (KeyValuePair<string, byte[]> file in entry.Files)
+            {
+                File.WriteAllBytes(Path.Combine(vaDir, file.Key), file.Value);
+            }
+            return true;
+        }
+    }
 
 
     /// <summary>

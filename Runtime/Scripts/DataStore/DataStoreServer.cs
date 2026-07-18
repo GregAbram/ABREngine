@@ -17,6 +17,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -125,6 +126,31 @@ namespace IVLab.ABREngine.DataStore
                             }
                             break;
 
+                        case ProtocolTags.VisAsset:
+                            {
+                                string uuid = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+                                string json = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+                                int fileCount = await FrameIO.ReadInt32Async(stream, cancelToken).ConfigureAwait(false);
+                                var files = new Dictionary<string, byte[]>(fileCount);
+                                for (int i = 0; i < fileCount; i++)
+                                {
+                                    string fileName = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+                                    byte[] fileData = await FrameIO.ReadBytesAsync(stream, cancelToken).ConfigureAwait(false);
+                                    files[fileName] = fileData;
+                                }
+                                hub.IngestVisAsset(uuid, json, files);
+                                await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
+                            }
+                            break;
+
+                        case ProtocolTags.ListVisAssets:
+                            await HandleListVisAssetsAsync(stream, cancelToken).ConfigureAwait(false);
+                            break;
+
+                        case ProtocolTags.GetVisAsset:
+                            await HandleGetVisAssetAsync(stream, cancelToken).ConfigureAwait(false);
+                            break;
+
                         case ProtocolTags.ListProjects:
                             await HandleListProjectsAsync(stream, cancelToken).ConfigureAwait(false);
                             break;
@@ -213,7 +239,7 @@ namespace IVLab.ABREngine.DataStore
             // same-key ones -- a no-op today since entries are bare path
             // strings, but keeps "farthest upstream wins" correct once
             // per-project metadata exists to actually differ between tiers.
-            var merged = new System.Collections.Generic.Dictionary<string, byte>();
+            var merged = new Dictionary<string, byte>();
             foreach (string projectPath in hub.Store.ListLocalProjects())
             {
                 merged[projectPath] = 0;
@@ -232,6 +258,58 @@ namespace IVLab.ABREngine.DataStore
             foreach (string projectPath in merged.Keys)
             {
                 await FrameIO.WriteStringAsync(stream, projectPath, cancelToken).ConfigureAwait(false);
+            }
+        }
+
+        private async Task HandleListVisAssetsAsync(NetworkStream stream, CancellationToken cancelToken)
+        {
+            // Merged with upstream the same way HandleListProjectsAsync is
+            // -- unlike the project-scoped list queries (states/keydata),
+            // there's no single project path to chain-and-cache first, so
+            // this is a global union query instead.
+            var merged = new Dictionary<string, VisAssetSummary>();
+            foreach (VisAssetSummary summary in hub.VisAssets.ListVisAssetSummaries())
+            {
+                merged[summary.Uuid] = summary;
+            }
+            if (hub.Upstream != null)
+            {
+                foreach (VisAssetSummary summary in await hub.Upstream.RequestListVisAssetsAsync().ConfigureAwait(false))
+                {
+                    if (!merged.ContainsKey(summary.Uuid))
+                    {
+                        merged[summary.Uuid] = summary;
+                    }
+                }
+            }
+
+            await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
+            await FrameIO.WriteInt32Async(stream, merged.Count, cancelToken).ConfigureAwait(false);
+            foreach (VisAssetSummary summary in merged.Values)
+            {
+                await FrameIO.WriteStringAsync(stream, summary.Uuid, cancelToken).ConfigureAwait(false);
+                await FrameIO.WriteStringAsync(stream, summary.Json, cancelToken).ConfigureAwait(false);
+            }
+        }
+
+        private async Task HandleGetVisAssetAsync(NetworkStream stream, CancellationToken cancelToken)
+        {
+            string uuid = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+
+            bool available = await hub.EnsureVisAssetAvailableAsync(uuid).ConfigureAwait(false);
+            if (!available || !hub.VisAssets.TryGetVisAsset(uuid, out VisAssetEntry entry))
+            {
+                await FrameIO.WriteStringAsync(stream, ProtocolTags.ErrorPrefix + $"unknown VisAsset \"{uuid}\"", cancelToken).ConfigureAwait(false);
+                return;
+            }
+
+            await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
+            await FrameIO.WriteStringAsync(stream, entry.Json, cancelToken).ConfigureAwait(false);
+            await FrameIO.WriteInt32Async(stream, entry.Files.Count, cancelToken).ConfigureAwait(false);
+            foreach (KeyValuePair<string, byte[]> file in entry.Files)
+            {
+                await FrameIO.WriteStringAsync(stream, file.Key, cancelToken).ConfigureAwait(false);
+                await FrameIO.WriteBytesAsync(stream, file.Value, cancelToken).ConfigureAwait(false);
             }
         }
 

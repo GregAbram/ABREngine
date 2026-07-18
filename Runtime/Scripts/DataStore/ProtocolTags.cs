@@ -121,6 +121,36 @@ namespace IVLab.ABREngine.DataStore
         /// </summary>
         public const string GetState = "getstate";
 
+        /// <summary>
+        /// One VisAsset's full bundle: json header (artifact.json) plus
+        /// every other file it references (thumbnail, colormap.xml,
+        /// geometry, etc). Unlike KeyData/State this is global/UUID-keyed,
+        /// not project-scoped -- label is the bare UUID, not a path. Wire
+        /// shape: [tag][label=uuid][json][int32 fileCount], then that many
+        /// (filename, bytes) pairs -- a superset of the [tag][label][json]
+        /// [bindata] shape used elsewhere, since a VisAsset bundle can have
+        /// more than one file.
+        /// </summary>
+        public const string VisAsset = "visasset";
+
+        /// <summary>
+        /// Request the UUID + json header (no file payloads) of every
+        /// VisAsset known locally -- a cheap browse query for populating a
+        /// UI palette, deliberately separate from "getvisasset" for the
+        /// same reason as "listkeydata"/"getstate".
+        /// </summary>
+        public const string ListVisAssets = "listvisassets";
+
+        /// <summary>
+        /// Request one VisAsset's full bundle in a single one-shot round
+        /// trip (label = bare UUID). Chains upstream first via
+        /// EnsureVisAssetAvailableAsync, the same as ListVisAssets/
+        /// ListStates/ListKeyData do for projects. Reply is the ack frame;
+        /// if "ok", the VisAsset tag's json+file-table shape follows (see
+        /// ProtocolTags.VisAsset).
+        /// </summary>
+        public const string GetVisAsset = "getvisasset";
+
         /// <summary>Literal ack string for a successful request.</summary>
         public const string Ok = "ok";
 

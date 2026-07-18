@@ -612,6 +612,9 @@ namespace IVLab.ABREngine
                         // byte-identical content for the same path, so
                         // sharing it is a unification, not a duplication.
                         LocalStorageRoot = Path.Combine(MediaPath, ABRConfig.Consts.DatasetFolder),
+                        // Same root VisAssetManager already reads/writes, for
+                        // the same reason.
+                        VisAssetStorageRoot = Path.Combine(MediaPath, ABRConfig.Consts.VisAssetFolder),
                         Upstream = upstream
                     });
 

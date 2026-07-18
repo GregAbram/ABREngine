@@ -43,6 +43,7 @@ namespace IVLab.ABREngine.DataStore
     public class SubscriptionHub
     {
         private readonly ILocalProjectStore store;
+        private readonly ILocalVisAssetStore visAssetStore;
 
         // One concurrent set of subscriber channels per project path.
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<ISubscriberChannel, byte>> subscribersByProject
@@ -76,12 +77,15 @@ namespace IVLab.ABREngine.DataStore
         private readonly object leaseLock = new object();
         public static readonly TimeSpan FeLeaseTimeout = TimeSpan.FromSeconds(15);
 
-        public SubscriptionHub(ILocalProjectStore store)
+        public SubscriptionHub(ILocalProjectStore store, ILocalVisAssetStore visAssetStore)
         {
             this.store = store;
+            this.visAssetStore = visAssetStore;
         }
 
         public ILocalProjectStore Store => store;
+
+        public ILocalVisAssetStore VisAssets => visAssetStore;
 
         /// <summary>
         /// This node's upstream, if any (null for a root node with no
@@ -108,6 +112,33 @@ namespace IVLab.ABREngine.DataStore
                 return false;
             }
             return await Upstream.EnsureSubscribedAsync(projectPath).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// True if `uuid` is available locally already, or becomes available
+        /// by fetching it from Upstream (a one-shot getvisasset, not a
+        /// persistent subscription -- VisAssets are immutable once a UUID
+        /// exists, so there's nothing to keep tailing). False if it's not
+        /// local and there's no upstream, or the upstream doesn't have it
+        /// either.
+        /// </summary>
+        public async Task<bool> EnsureVisAssetAvailableAsync(string uuid)
+        {
+            if (visAssetStore.HasVisAsset(uuid))
+            {
+                return true;
+            }
+            if (Upstream == null)
+            {
+                return false;
+            }
+            return await Upstream.EnsureVisAssetAvailableAsync(uuid).ConfigureAwait(false);
+        }
+
+        /// <summary>Ingest a VisAsset bundle write: persist its json header and every file in it. No live fan-out -- see EnsureVisAssetAvailableAsync's remarks.</summary>
+        public void IngestVisAsset(string uuid, string json, IReadOnlyDictionary<string, byte[]> files)
+        {
+            visAssetStore.SaveVisAsset(uuid, json, files);
         }
 
         /// <summary>

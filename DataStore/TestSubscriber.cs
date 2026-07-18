@@ -291,6 +291,78 @@ internal static class TestSubscriber
         Console.WriteLine($"getstate \"{statePath}\": {json}");
     }
 
+    public static async Task ListVisAssetsAsync(string host, int port)
+    {
+        using TcpClient client = new TcpClient();
+        await client.ConnectAsync(host, port).ConfigureAwait(false);
+        NetworkStream stream = client.GetStream();
+
+        await FrameIO.WriteStringAsync(stream, ProtocolTags.ListVisAssets).ConfigureAwait(false);
+
+        string status = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        if (status.StartsWith(ProtocolTags.ErrorPrefix, StringComparison.Ordinal))
+        {
+            Console.WriteLine($"listvisassets failed: {status}");
+            return;
+        }
+
+        int count = await FrameIO.ReadInt32Async(stream).ConfigureAwait(false);
+        Console.WriteLine($"{count} VisAsset(s):");
+        for (int i = 0; i < count; i++)
+        {
+            string uuid = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+            string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+            Console.WriteLine($"  {uuid}: {json}");
+        }
+    }
+
+    public static async Task GetVisAssetAsync(string host, int port, string uuid)
+    {
+        using TcpClient client = new TcpClient();
+        await client.ConnectAsync(host, port).ConfigureAwait(false);
+        NetworkStream stream = client.GetStream();
+
+        await FrameIO.WriteStringAsync(stream, ProtocolTags.GetVisAsset).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, uuid).ConfigureAwait(false);
+
+        string status = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        if (status.StartsWith(ProtocolTags.ErrorPrefix, StringComparison.Ordinal))
+        {
+            Console.WriteLine($"getvisasset failed: {status}");
+            return;
+        }
+
+        string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        int fileCount = await FrameIO.ReadInt32Async(stream).ConfigureAwait(false);
+        Console.WriteLine($"getvisasset \"{uuid}\": {json}");
+        for (int i = 0; i < fileCount; i++)
+        {
+            string fileName = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+            byte[] fileData = await FrameIO.ReadBytesAsync(stream).ConfigureAwait(false);
+            Console.WriteLine($"  {fileName}: {fileData.Length} bytes");
+        }
+    }
+
+    public static async Task PushVisAssetAsync(string host, int port, string uuid, string json, System.Collections.Generic.Dictionary<string, byte[]> files)
+    {
+        using TcpClient client = new TcpClient();
+        await client.ConnectAsync(host, port).ConfigureAwait(false);
+        NetworkStream stream = client.GetStream();
+
+        await FrameIO.WriteStringAsync(stream, ProtocolTags.VisAsset).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, uuid).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, json).ConfigureAwait(false);
+        await FrameIO.WriteInt32Async(stream, files.Count).ConfigureAwait(false);
+        foreach (var file in files)
+        {
+            await FrameIO.WriteStringAsync(stream, file.Key).ConfigureAwait(false);
+            await FrameIO.WriteBytesAsync(stream, file.Value).ConfigureAwait(false);
+        }
+
+        string ack = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        Console.WriteLine($"pushvisasset \"{uuid}\" ({files.Count} file(s)) -> {ack}");
+    }
+
     public static async Task PushStateAsync(string host, int port, string statePath, string json)
     {
         using TcpClient client = new TcpClient();

@@ -33,6 +33,9 @@ namespace IVLab.ABREngine.DataStore
         /// <summary>Directory to persist projects under (created if missing).</summary>
         public string LocalStorageRoot;
 
+        /// <summary>Directory to persist VisAssets under (created if missing).</summary>
+        public string VisAssetStorageRoot;
+
         /// <summary>
         /// Optional upstream DataStore to lazily subscribe through on a
         /// local cache miss. Null (default) means this is a root node --
@@ -56,7 +59,8 @@ namespace IVLab.ABREngine.DataStore
         public void Start(DataStoreNodeConfig config)
         {
             var store = new FilesystemProjectStore(config.LocalStorageRoot);
-            Hub = new SubscriptionHub(store);
+            var visAssetStore = new FilesystemVisAssetStore(config.VisAssetStorageRoot);
+            Hub = new SubscriptionHub(store, visAssetStore);
             if (config.Upstream != null)
             {
                 Hub.Upstream = new UpstreamLink(config.Upstream.Host, config.Upstream.Port, Hub);

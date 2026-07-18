@@ -62,6 +62,12 @@ namespace IVLab.ABREngine.DataStore
         private Task<bool> activeSubscription;
         private readonly object activeSubscriptionLock = new object();
 
+        // Dedup for concurrent local requests for the same cold VisAsset --
+        // unlike `subscriptions`, entries are removed once the fetch
+        // completes (success or failure) rather than kept warm, since a
+        // getvisasset round trip is one-shot, not a persistent subscription.
+        private readonly ConcurrentDictionary<string, Task<bool>> visAssetFetches = new ConcurrentDictionary<string, Task<bool>>();
+
         public UpstreamLink(string host, int port, SubscriptionHub hub)
         {
             this.host = host;
@@ -345,6 +351,92 @@ namespace IVLab.ABREngine.DataStore
             catch
             {
                 return Array.Empty<string>();
+            }
+        }
+
+        /// <summary>
+        /// Ensure this node has `uuid` locally, fetching it from upstream via
+        /// a one-shot getvisasset round trip if not. Returns once that fetch
+        /// (and the resulting hub.IngestVisAsset) has completed (true), or
+        /// once it's clear the upstream doesn't have it either / is
+        /// unreachable (false). Concurrent callers for the same UUID share
+        /// one in-flight fetch.
+        /// </summary>
+        public Task<bool> EnsureVisAssetAvailableAsync(string uuid)
+        {
+            return visAssetFetches.GetOrAdd(uuid, FetchVisAssetFromUpstreamAsync);
+        }
+
+        private async Task<bool> FetchVisAssetFromUpstreamAsync(string uuid)
+        {
+            try
+            {
+                using TcpClient client = new TcpClient();
+                await client.ConnectAsync(host, port).ConfigureAwait(false);
+                NetworkStream stream = client.GetStream();
+
+                await FrameIO.WriteStringAsync(stream, ProtocolTags.GetVisAsset).ConfigureAwait(false);
+                await FrameIO.WriteStringAsync(stream, uuid).ConfigureAwait(false);
+
+                string status = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                if (status.StartsWith(ProtocolTags.ErrorPrefix, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                int fileCount = await FrameIO.ReadInt32Async(stream).ConfigureAwait(false);
+                var files = new Dictionary<string, byte[]>(fileCount);
+                for (int i = 0; i < fileCount; i++)
+                {
+                    string fileName = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                    byte[] fileData = await FrameIO.ReadBytesAsync(stream).ConfigureAwait(false);
+                    files[fileName] = fileData;
+                }
+
+                hub.IngestVisAsset(uuid, json, files);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                visAssetFetches.TryRemove(uuid, out _);
+            }
+        }
+
+        /// <summary>Request the upstream's known VisAsset list (UUID + json header). Returns empty (not an error) if the upstream is unreachable.</summary>
+        public async Task<IReadOnlyCollection<VisAssetSummary>> RequestListVisAssetsAsync()
+        {
+            try
+            {
+                using TcpClient client = new TcpClient();
+                await client.ConnectAsync(host, port).ConfigureAwait(false);
+                NetworkStream stream = client.GetStream();
+
+                await FrameIO.WriteStringAsync(stream, ProtocolTags.ListVisAssets).ConfigureAwait(false);
+
+                string status = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                if (status.StartsWith(ProtocolTags.ErrorPrefix, StringComparison.Ordinal))
+                {
+                    return Array.Empty<VisAssetSummary>();
+                }
+
+                int count = await FrameIO.ReadInt32Async(stream).ConfigureAwait(false);
+                var result = new List<VisAssetSummary>(count);
+                for (int i = 0; i < count; i++)
+                {
+                    string uuid = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                    string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+                    result.Add(new VisAssetSummary { Uuid = uuid, Json = json });
+                }
+                return result;
+            }
+            catch
+            {
+                return Array.Empty<VisAssetSummary>();
             }
         }
     }

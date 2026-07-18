@@ -17,6 +17,7 @@
  */
 
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using IVLab.ABREngine.DataStore;
@@ -47,6 +48,12 @@ internal class Program
                 return await RunPushStateAsync(args).ConfigureAwait(false);
             case "getstate":
                 return await RunGetStateAsync(args).ConfigureAwait(false);
+            case "listvisassets":
+                return await RunListVisAssetsAsync(args).ConfigureAwait(false);
+            case "getvisasset":
+                return await RunGetVisAssetAsync(args).ConfigureAwait(false);
+            case "pushvisasset":
+                return await RunPushVisAssetAsync(args).ConfigureAwait(false);
             case "subscribeactive":
                 return await RunSubscribeActiveAsync(args).ConfigureAwait(false);
             case "setactive":
@@ -69,6 +76,9 @@ internal class Program
         Console.Error.WriteLine("  DataStore listkeydata <host> <port> <projectPath>");
         Console.Error.WriteLine("  DataStore pushstate <host> <port> <statePath> <json>");
         Console.Error.WriteLine("  DataStore getstate <host> <port> <statePath>");
+        Console.Error.WriteLine("  DataStore listvisassets <host> <port>");
+        Console.Error.WriteLine("  DataStore getvisasset <host> <port> <uuid>");
+        Console.Error.WriteLine("  DataStore pushvisasset <host> <port> <uuid> <json> [filename filepath]...");
         Console.Error.WriteLine("  DataStore subscribeactive <host> <port>");
         Console.Error.WriteLine("  DataStore setactive <host> <port> <statePath> <sessionId>");
         Console.Error.WriteLine("  DataStore attachfe <host> <port> <sessionId>");
@@ -83,6 +93,14 @@ internal class Program
         }
         string storageRoot = args[2];
 
+        // Sibling "visassets" folder next to storageRoot -- same
+        // MediaPath/datasets + MediaPath/visassets convention ABREngine.cs
+        // uses for the embedded node, kept implicit here (no new CLI arg)
+        // so existing "serve <port> <storageRoot> [upstreamHost upstreamPort]"
+        // invocations keep working unchanged.
+        string parentDir = Directory.GetParent(Path.GetFullPath(storageRoot))?.FullName ?? storageRoot;
+        string visAssetStorageRoot = Path.Combine(parentDir, "visassets");
+
         RemoteEndpoint upstream = null;
         if (args.Length >= 5)
         {
@@ -95,9 +113,9 @@ internal class Program
         }
 
         var node = new DataStoreNode();
-        node.Start(new DataStoreNodeConfig { ListenPort = port, LocalStorageRoot = storageRoot, Upstream = upstream });
+        node.Start(new DataStoreNodeConfig { ListenPort = port, LocalStorageRoot = storageRoot, VisAssetStorageRoot = visAssetStorageRoot, Upstream = upstream });
         string upstreamDesc = upstream != null ? $", upstream {upstream.Host}:{upstream.Port}" : "";
-        Console.WriteLine($"DataStore listening on port {port}, storing under \"{storageRoot}\"{upstreamDesc}. Press Ctrl+C to stop.");
+        Console.WriteLine($"DataStore listening on port {port}, storing under \"{storageRoot}\" (VisAssets under \"{visAssetStorageRoot}\"){upstreamDesc}. Press Ctrl+C to stop.");
 
         var stopSignal = new ManualResetEventSlim(false);
         Console.CancelKeyPress += (_, e) =>
@@ -192,6 +210,56 @@ internal class Program
         string statePath = args[3];
 
         await TestSubscriber.GetStateAsync(host, port, statePath).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task<int> RunListVisAssetsAsync(string[] args)
+    {
+        if (args.Length < 3 || !int.TryParse(args[2], out int port))
+        {
+            PrintUsage();
+            return 1;
+        }
+        string host = args[1];
+
+        await TestSubscriber.ListVisAssetsAsync(host, port).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task<int> RunGetVisAssetAsync(string[] args)
+    {
+        if (args.Length < 4 || !int.TryParse(args[2], out int port))
+        {
+            PrintUsage();
+            return 1;
+        }
+        string host = args[1];
+        string uuid = args[3];
+
+        await TestSubscriber.GetVisAssetAsync(host, port, uuid).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task<int> RunPushVisAssetAsync(string[] args)
+    {
+        if (args.Length < 5 || !int.TryParse(args[2], out int port))
+        {
+            PrintUsage();
+            return 1;
+        }
+        string host = args[1];
+        string uuid = args[3];
+        string json = args[4];
+
+        var files = new System.Collections.Generic.Dictionary<string, byte[]>();
+        for (int i = 5; i + 1 < args.Length; i += 2)
+        {
+            string fileName = args[i];
+            string filePath = args[i + 1];
+            files[fileName] = File.ReadAllBytes(filePath);
+        }
+
+        await TestSubscriber.PushVisAssetAsync(host, port, uuid, json, files).ConfigureAwait(false);
         return 0;
     }
 

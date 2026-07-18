@@ -105,6 +105,15 @@ namespace IVLab.ABREngine.DataStore
         /// <summary>Name + json header (no binary) for every key data object currently known locally for a project.</summary>
         IReadOnlyCollection<KeyDataSummary> ListKeyDataSummaries(string projectPath);
 
+        /// <summary>
+        /// Attempt to read back one named state's json, without pulling the
+        /// rest of its project (KeyData binaries, other states) along with
+        /// it -- a cheap one-shot fetch for a consumer that just needs this
+        /// one state's content, e.g. abr_server seeding a fresh State
+        /// instance instead of always starting blank.
+        /// </summary>
+        bool TryGetState(string statePath, out string json);
+
         /// <summary>Attempt to read back everything currently known about a project, for replaying to a new subscriber.</summary>
         bool TryReplayProject(string projectPath, out ProjectSnapshot snapshot);
     }

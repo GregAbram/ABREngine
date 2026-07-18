@@ -110,6 +110,17 @@ namespace IVLab.ABREngine.DataStore
         /// </summary>
         public const string AttachFE = "attachfe";
 
+        /// <summary>
+        /// Request one named state's json in a single one-shot round trip
+        /// (label = full 4-segment state path) -- a cheap fetch for a
+        /// consumer that just needs that one state's content, deliberately
+        /// separate from "subscribe" for the same reason as "liststates"/
+        /// "listkeydata". Chains upstream first via EnsureAvailableAsync,
+        /// the same as those two. Reply is the ack frame; if "ok", one
+        /// length-prefixed json string follows.
+        /// </summary>
+        public const string GetState = "getstate";
+
         /// <summary>Literal ack string for a successful request.</summary>
         public const string Ok = "ok";
 

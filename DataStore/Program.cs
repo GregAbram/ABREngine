@@ -45,6 +45,8 @@ internal class Program
                 return await RunListKeyDataAsync(args).ConfigureAwait(false);
             case "pushstate":
                 return await RunPushStateAsync(args).ConfigureAwait(false);
+            case "getstate":
+                return await RunGetStateAsync(args).ConfigureAwait(false);
             case "subscribeactive":
                 return await RunSubscribeActiveAsync(args).ConfigureAwait(false);
             case "setactive":
@@ -66,6 +68,7 @@ internal class Program
         Console.Error.WriteLine("  DataStore liststates <host> <port> <projectPath>");
         Console.Error.WriteLine("  DataStore listkeydata <host> <port> <projectPath>");
         Console.Error.WriteLine("  DataStore pushstate <host> <port> <statePath> <json>");
+        Console.Error.WriteLine("  DataStore getstate <host> <port> <statePath>");
         Console.Error.WriteLine("  DataStore subscribeactive <host> <port>");
         Console.Error.WriteLine("  DataStore setactive <host> <port> <statePath> <sessionId>");
         Console.Error.WriteLine("  DataStore attachfe <host> <port> <sessionId>");
@@ -175,6 +178,20 @@ internal class Program
         string json = args[4];
 
         await TestSubscriber.PushStateAsync(host, port, statePath, json).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task<int> RunGetStateAsync(string[] args)
+    {
+        if (args.Length < 4 || !int.TryParse(args[2], out int port))
+        {
+            PrintUsage();
+            return 1;
+        }
+        string host = args[1];
+        string statePath = args[3];
+
+        await TestSubscriber.GetStateAsync(host, port, statePath).ConfigureAwait(false);
         return 0;
     }
 

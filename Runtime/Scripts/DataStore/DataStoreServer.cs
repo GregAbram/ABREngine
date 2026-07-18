@@ -137,6 +137,10 @@ namespace IVLab.ABREngine.DataStore
                             await HandleListKeyDataAsync(stream, cancelToken).ConfigureAwait(false);
                             break;
 
+                        case ProtocolTags.GetState:
+                            await HandleGetStateAsync(stream, cancelToken).ConfigureAwait(false);
+                            break;
+
                         case ProtocolTags.Subscribe:
                             await HandleSubscribeAsync(stream, cancelToken).ConfigureAwait(false);
                             break;
@@ -276,6 +280,25 @@ namespace IVLab.ABREngine.DataStore
                 await FrameIO.WriteStringAsync(stream, summary.Name, cancelToken).ConfigureAwait(false);
                 await FrameIO.WriteStringAsync(stream, summary.Json, cancelToken).ConfigureAwait(false);
             }
+        }
+
+        private async Task HandleGetStateAsync(NetworkStream stream, CancellationToken cancelToken)
+        {
+            string statePath = await FrameIO.ReadStringAsync(stream, cancelToken).ConfigureAwait(false);
+            string projectPath = ProjectPaths.GetProjectPath(statePath);
+
+            // Same "make it locally available" chain as ListStates/ListKeyData
+            // -- pulls the project (including its states) in from upstream
+            // if this node hasn't seen it yet.
+            bool available = await hub.EnsureAvailableAsync(projectPath).ConfigureAwait(false);
+            if (!available || !hub.Store.TryGetState(statePath, out string json))
+            {
+                await FrameIO.WriteStringAsync(stream, ProtocolTags.ErrorPrefix + $"unknown state \"{statePath}\"", cancelToken).ConfigureAwait(false);
+                return;
+            }
+
+            await FrameIO.WriteStringAsync(stream, ProtocolTags.Ok, cancelToken).ConfigureAwait(false);
+            await FrameIO.WriteStringAsync(stream, json, cancelToken).ConfigureAwait(false);
         }
 
         private async Task HandleSubscribeAsync(NetworkStream stream, CancellationToken cancelToken)

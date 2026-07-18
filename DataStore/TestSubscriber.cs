@@ -271,6 +271,26 @@ internal static class TestSubscriber
         Console.WriteLine($"attachfe (session \"{sessionId}\") -> {ack}");
     }
 
+    public static async Task GetStateAsync(string host, int port, string statePath)
+    {
+        using TcpClient client = new TcpClient();
+        await client.ConnectAsync(host, port).ConfigureAwait(false);
+        NetworkStream stream = client.GetStream();
+
+        await FrameIO.WriteStringAsync(stream, ProtocolTags.GetState).ConfigureAwait(false);
+        await FrameIO.WriteStringAsync(stream, statePath).ConfigureAwait(false);
+
+        string status = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        if (status.StartsWith(ProtocolTags.ErrorPrefix, StringComparison.Ordinal))
+        {
+            Console.WriteLine($"getstate failed: {status}");
+            return;
+        }
+
+        string json = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
+        Console.WriteLine($"getstate \"{statePath}\": {json}");
+    }
+
     public static async Task PushStateAsync(string host, int port, string statePath, string json)
     {
         using TcpClient client = new TcpClient();

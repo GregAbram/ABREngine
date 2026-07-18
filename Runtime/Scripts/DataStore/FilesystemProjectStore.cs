@@ -116,6 +116,24 @@ namespace IVLab.ABREngine.DataStore
             }
         }
 
+        public bool TryGetState(string statePath, out string json)
+        {
+            string projectPath = ProjectPaths.GetProjectPath(statePath);
+            string name = ProjectPaths.GetName(statePath);
+
+            lock (fileLock)
+            {
+                string stateFile = Path.Combine(StateDir(projectPath), name + ".json");
+                if (!File.Exists(stateFile))
+                {
+                    json = null;
+                    return false;
+                }
+                json = File.ReadAllText(stateFile);
+                return true;
+            }
+        }
+
         public IReadOnlyCollection<string> ListStateNames(string projectPath)
         {
             lock (fileLock)

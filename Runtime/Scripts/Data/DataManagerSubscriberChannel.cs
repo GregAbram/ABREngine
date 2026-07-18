@@ -38,6 +38,22 @@ namespace IVLab.ABREngine
     /// </summary>
     internal class DataManagerSubscriberChannel : ISubscriberChannel
     {
+        // True (default) for an explicit SubscribeAsync channel, which
+        // receives every state in the project unfiltered and so must filter
+        // itself down to SubscribeStateName. False for a channel used as
+        // the inner target of SubscriptionHub's ActiveSubscriberWrapper
+        // (see ABREngine.SubscribeInternalAsync's active-mode branch) --
+        // that wrapper already filters to exactly the true active state
+        // name before forwarding here, and SubscribeStateName is never set
+        // in that mode, so re-checking it here would silently drop every
+        // state.
+        private readonly bool filterByStateName;
+
+        public DataManagerSubscriberChannel(bool filterByStateName = true)
+        {
+            this.filterByStateName = filterByStateName;
+        }
+
         public Task SendProjectInfoAsync(string projectPath, string json)
         {
             ProjectInfo info = JsonUtility.FromJson<ProjectInfo>(json);
@@ -68,14 +84,17 @@ namespace IVLab.ABREngine
 
         public Task SendStateAsync(string statePath, string json)
         {
-            // A project can have multiple named states; this instance only
-            // applies the one named by ABREngine.Instance.SubscribeStateName
-            // (empty = data-only mode, ignore every state). This is a live,
-            // runtime-settable field (see ABREngine.Subscribe()), not the
-            // abr.json-only value it used to be -- read fresh every call
-            // rather than cached, so a change takes effect on the very next
-            // push.
-            if (ProjectPaths.GetName(statePath) != ABREngine.Instance.SubscribeStateName)
+            // A project can have multiple named states; when filtering is
+            // on, this instance only applies the one named by
+            // ABREngine.Instance.SubscribeStateName (empty = data-only
+            // mode, ignore every state). This is a live, runtime-settable
+            // field (see ABREngine.Subscribe()), not the abr.json-only
+            // value it used to be -- read fresh every call rather than
+            // cached, so a change takes effect on the very next push. When
+            // filtering is off (active-mode channel), every state that
+            // reaches here has already been filtered upstream by
+            // SubscriptionHub's ActiveSubscriberWrapper.
+            if (filterByStateName && ProjectPaths.GetName(statePath) != ABREngine.Instance.SubscribeStateName)
             {
                 return Task.CompletedTask;
             }

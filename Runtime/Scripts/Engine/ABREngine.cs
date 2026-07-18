@@ -318,7 +318,7 @@ namespace IVLab.ABREngine
             {
                 if (DataStore != null && await DataStore.Hub.EnsureActiveAvailableAsync().ConfigureAwait(false))
                 {
-                    var activeChannel = new DataManagerSubscriberChannel();
+                    var activeChannel = new DataManagerSubscriberChannel(filterByStateName: false);
                     SubscribeResult activeResult = await DataStore.Hub.SubscribeActiveAsync(activeChannel).ConfigureAwait(false);
                     if (activeResult.Success)
                     {

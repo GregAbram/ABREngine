@@ -393,20 +393,11 @@ namespace IVLab.ABREngine
             }
             else
             {
-                // No project.json available for this dataset. Fall back to the
-                // deprecated manual ABRConfig center/scale override, if one was
-                // provided; otherwise pass data straight through.
-                ABRConfig config = ABREngine.Instance.Config;
-                if (config.scale > float.Epsilon)
-                {
-                    GroupToDataMatrix =
-                        Matrix4x4.Scale(Vector3.one * (float)config.scale) *
-                        Matrix4x4.Translate(-config.center);
-                }
-                else
-                {
-                    GroupToDataMatrix = Matrix4x4.identity;
-                }
+                // No project.json available for this dataset -- pass data
+                // straight through. (The old manual ABRConfig center/scale
+                // override that used to live here is gone; project.json is
+                // the only source of truth for bounds now.)
+                GroupToDataMatrix = Matrix4x4.identity;
                 GroupBounds = GroupContainer;
             }
 

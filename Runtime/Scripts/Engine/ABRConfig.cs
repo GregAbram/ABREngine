@@ -372,17 +372,30 @@ namespace IVLab.ABREngine
             }
             if (needBackup)
             {
-                string schemaName = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture).Replace(":", "_") + ".json";
-                if (!Directory.Exists(backupSchemaDir))
+                // Best-effort only: on Android, streamingAssetsPath lives
+                // inside the read-only APK, so writing here always throws.
+                // That must not be allowed to abort Setup() (and thus
+                // Awake()) -- everything after Setup() in ABREngine.Awake(),
+                // including embedded DataStore startup, depends on this
+                // returning normally.
+                try
                 {
-                    Directory.CreateDirectory(backupSchemaDir);
+                    string schemaName = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture).Replace(":", "_") + ".json";
+                    if (!Directory.Exists(backupSchemaDir))
+                    {
+                        Directory.CreateDirectory(backupSchemaDir);
+                    }
+                    string schemaBakPath = Path.Combine(backupSchemaDir, schemaName);
+                    using (StreamWriter writer = new StreamWriter(schemaBakPath))
+                    {
+                        writer.Write(schemaContents);
+                    }
+                    Debug.Log("Saved backup schema to " + schemaBakPath);
                 }
-                string schemaBakPath = Path.Combine(backupSchemaDir, schemaName);
-                using (StreamWriter writer = new StreamWriter(schemaBakPath))
+                catch (Exception e)
                 {
-                    writer.Write(schemaContents);
+                    Debug.LogFormat("Unable to save backup schema to {0}: {1}", backupSchemaDir, e.Message);
                 }
-                Debug.Log("Saved backup schema to " + schemaBakPath);
             }
 
             Debug.LogFormat("Using ABR Schema, version {0}", SchemaJson["properties"]["version"]["default"]);

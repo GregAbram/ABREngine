@@ -647,7 +647,7 @@ namespace IVLab.ABREngine
 
             try
             {
-                if (Config.stateFile != null)
+                if (!string.IsNullOrEmpty(Config.stateFile))
                 {
                     string statePath = Config.stateFile;
                     LoadState<PathStateFileLoader>(statePath);

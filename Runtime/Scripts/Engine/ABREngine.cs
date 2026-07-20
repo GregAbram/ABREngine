@@ -554,8 +554,16 @@ namespace IVLab.ABREngine
         {
             if (! Config)
                 Config = ABRConfig.Instance;
-                 
-            if (! Config.IsInitialized)
+
+            // IsInitialized is meant to guarantee Schema is populated, but
+            // Unity's Resources.Load-cached ScriptableObject singleton can
+            // end up with IsInitialized true and Schema null across
+            // separate Editor Play sessions in the same domain (a
+            // Play-Mode/asset-reload quirk, not seen in real builds where
+            // every launch is a fresh process) -- check both so a bad
+            // in-between state self-heals instead of leaving Schema
+            // permanently null.
+            if (! Config.IsInitialized || Config.Schema == null)
                 Config.Setup();
                 
             // Enable depth texture write on main cam so that volume rendering

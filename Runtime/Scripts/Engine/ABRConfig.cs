@@ -270,7 +270,16 @@ namespace IVLab.ABREngine
 
         void Reset()
         {
-            mediaPath = Application.persistentDataPath;
+            // Deliberately left blank, not Application.persistentDataPath:
+            // Reset() only runs once, in the Editor, at asset-creation time,
+            // and whatever it computes gets baked into the asset file
+            // permanently. Application.persistentDataPath evaluated here
+            // would be the Editor machine's own path (e.g. a Windows path),
+            // meaningless on another platform the built asset ships to
+            // (e.g. Android/Quest). Leaving this blank lets ABREngine.MediaPath's
+            // runtime fallback compute the right path fresh on whatever
+            // device actually runs the build.
+            mediaPath = "";
             serverUrl = "";
             stateFile = "";
             loadStateOnStart = "";

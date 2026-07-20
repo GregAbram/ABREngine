@@ -453,7 +453,7 @@ namespace IVLab.ABREngine
         {
             get
             {
-                if (Config.mediaPath != null)
+                if (!string.IsNullOrEmpty(Config.mediaPath))
                 {
                     return Path.GetFullPath(Config.mediaPath);
                 }

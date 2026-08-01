@@ -555,6 +555,11 @@ namespace IVLab.ABREngine
             if (! Config)
                 Config = ABRConfig.Instance;
 
+            Debug.LogFormat("XX right after Resources.Load: Config.mediaPath = '{0}', Config.GetInstanceID() = {1}, name = '{2}'", Config.mediaPath, Config.GetInstanceID(), Config.name);
+#if UNITY_EDITOR
+            Debug.LogFormat("XX asset path = '{0}'", UnityEditor.AssetDatabase.GetAssetPath(Config));
+#endif
+
             // IsInitialized is meant to guarantee Schema is populated, but
             // Unity's Resources.Load-cached ScriptableObject singleton can
             // end up with IsInitialized true and Schema null across

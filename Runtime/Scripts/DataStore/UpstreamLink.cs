@@ -231,8 +231,9 @@ namespace IVLab.ABREngine.DataStore
                     return false;
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                DataStoreLog.Warn($"UpstreamLink: failed to subscribe-active to upstream {host}:{port}: {ex.GetType().Name}: {ex.Message}");
                 client.Dispose();
                 lock (activeSubscriptionLock) { activeSubscription = null; }
                 return false;

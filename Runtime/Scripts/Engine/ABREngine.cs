@@ -612,6 +612,13 @@ namespace IVLab.ABREngine
                 }
                 if (Config.dataStorePort != 0)
                 {
+                    // Runtime/Scripts/DataStore has no UnityEngine dependency
+                    // (it also compiles as a plain console app), so it can't
+                    // call Debug.Log directly -- route its warnings through
+                    // here instead of letting them default to Console.Error,
+                    // which isn't guaranteed to reach Android's logcat.
+                    IVLab.ABREngine.DataStore.DataStoreLog.Warn = msg => Debug.LogWarning(msg);
+
                     RemoteEndpoint upstream = null;
                     if (Config.remotes != null && Config.remotes.Length > 0)
                     {

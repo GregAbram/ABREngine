@@ -214,6 +214,8 @@ namespace IVLab.ABREngine.DataStore
 
         private async Task<bool> SubscribeActiveToUpstreamAsync()
         {
+            DataStoreLog.Info($"UpstreamLink: connecting to upstream {host}:{port} for active-state subscription...");
+
             TcpClient client = new TcpClient();
             NetworkStream stream;
             try
@@ -226,10 +228,13 @@ namespace IVLab.ABREngine.DataStore
                 string ack = await FrameIO.ReadStringAsync(stream).ConfigureAwait(false);
                 if (ack.StartsWith(ProtocolTags.ErrorPrefix, StringComparison.Ordinal))
                 {
+                    DataStoreLog.Warn($"UpstreamLink: upstream {host}:{port} rejected active-state subscribe: {ack}");
                     client.Dispose();
                     lock (activeSubscriptionLock) { activeSubscription = null; }
                     return false;
                 }
+
+                DataStoreLog.Info($"UpstreamLink: connected to upstream {host}:{port}, ack ok -- waiting for active-state replay...");
             }
             catch (Exception ex)
             {
@@ -299,6 +304,7 @@ namespace IVLab.ABREngine.DataStore
                                 if (!signaledReplayComplete)
                                 {
                                     signaledReplayComplete = true;
+                                    DataStoreLog.Info($"UpstreamLink: active-state replay from {host}:{port} complete -- upstream has an active project.");
                                     becameWarm.TrySetResult(true);
                                 }
                                 break;
@@ -309,14 +315,16 @@ namespace IVLab.ABREngine.DataStore
                         }
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
                     // Connection dropped (network hiccup, upstream restart, etc).
+                    DataStoreLog.Warn($"UpstreamLink: active-state connection to {host}:{port} dropped: {ex.GetType().Name}: {ex.Message}");
                 }
                 finally
                 {
                     if (!signaledReplayComplete)
                     {
+                        DataStoreLog.Info($"UpstreamLink: active-state replay from {host}:{port} ended before anything became active -- upstream currently has no active project.");
                         becameWarm.TrySetResult(false);
                     }
                     lock (activeSubscriptionLock) { activeSubscription = null; }

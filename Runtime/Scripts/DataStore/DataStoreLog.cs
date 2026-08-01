@@ -30,6 +30,7 @@ namespace IVLab.ABREngine.DataStore
     /// </summary>
     public static class DataStoreLog
     {
+        public static Action<string> Info = msg => Console.WriteLine(msg);
         public static Action<string> Warn = msg => Console.Error.WriteLine(msg);
     }
 }

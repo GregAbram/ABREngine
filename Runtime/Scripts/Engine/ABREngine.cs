@@ -618,6 +618,7 @@ namespace IVLab.ABREngine
                     // here instead of letting them default to Console.Error,
                     // which isn't guaranteed to reach Android's logcat.
                     IVLab.ABREngine.DataStore.DataStoreLog.Warn = msg => Debug.LogWarning(msg);
+                    IVLab.ABREngine.DataStore.DataStoreLog.Info = msg => Debug.Log(msg);
 
                     RemoteEndpoint upstream = null;
                     if (Config.remotes != null && Config.remotes.Length > 0)

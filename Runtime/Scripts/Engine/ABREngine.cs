@@ -594,6 +594,8 @@ namespace IVLab.ABREngine
             // when they have no dataset) - guid zeroed out
             _defaultGroup = CreateDataImpressionGroup("Default", new Guid());
 
+            Debug.LogFormat("XX persistentDataPath = '{0}', Config.mediaPath = '{1}', MediaPath = '{2}'", persistentDataPath, Config.mediaPath, MediaPath);
+
             try
             {
                 VisAssets = new VisAssetManager(Path.Combine(MediaPath, ABRConfig.Consts.VisAssetFolder));

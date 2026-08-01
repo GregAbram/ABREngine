@@ -70,7 +70,13 @@ namespace IVLab.ABREngine.DataStore
                 File.WriteAllText(ArtifactJsonFile(uuid), json);
                 foreach (KeyValuePair<string, byte[]> file in files)
                 {
-                    File.WriteAllBytes(Path.Combine(dir, file.Key), file.Value);
+                    // file.Key can be a relative path with subdirectories
+                    // (e.g. "meshes/LOD1.obj" for glyph VisAssets) --
+                    // Directory.CreateDirectory is a no-op if it already
+                    // exists, so this is safe to call unconditionally.
+                    string filePath = Path.Combine(dir, file.Key);
+                    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+                    File.WriteAllBytes(filePath, file.Value);
                 }
             }
         }
@@ -92,15 +98,18 @@ namespace IVLab.ABREngine.DataStore
                     Json = File.ReadAllText(artifactJsonFile)
                 };
 
+                // Recursive: glyph VisAssets keep their LOD meshes/normal
+                // maps under subdirectories (e.g. "meshes/LOD1.obj"), which
+                // a non-recursive enumeration would silently skip.
                 string dir = VisAssetDir(uuid);
-                foreach (string filePath in Directory.EnumerateFiles(dir))
+                foreach (string filePath in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
                 {
-                    string fileName = Path.GetFileName(filePath);
-                    if (fileName == ArtifactJsonFileName)
+                    string relativePath = Path.GetRelativePath(dir, filePath).Replace('\\', '/');
+                    if (relativePath == ArtifactJsonFileName)
                     {
                         continue;
                     }
-                    entry.Files[fileName] = File.ReadAllBytes(filePath);
+                    entry.Files[relativePath] = File.ReadAllBytes(filePath);
                 }
 
                 return true;

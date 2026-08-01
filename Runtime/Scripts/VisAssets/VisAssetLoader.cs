@@ -338,7 +338,12 @@ namespace IVLab.ABREngine
             File.WriteAllText(Path.Combine(vaDir, VisAssetJson), entry.Json);
             foreach (KeyValuePair<string, byte[]> file in entry.Files)
             {
-                File.WriteAllBytes(Path.Combine(vaDir, file.Key), file.Value);
+                // file.Key can be a relative path with subdirectories (e.g.
+                // "meshes/LOD1.obj" for glyph VisAssets) -- make sure that
+                // subdirectory actually exists before writing into it.
+                string filePath = Path.Combine(vaDir, file.Key);
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+                File.WriteAllBytes(filePath, file.Value);
             }
             return true;
         }

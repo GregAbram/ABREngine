@@ -41,6 +41,7 @@ Shader "ABR/Ribbon"
             HLSLPROGRAM
             #pragma vertex   vert
             #pragma fragment frag
+            #pragma multi_compile_instancing
 
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
@@ -81,6 +82,7 @@ Shader "ABR/Ribbon"
                 float4 tangentOS  : TANGENT;
                 float2 uv         : TEXCOORD0;
                 float4 color      : COLOR;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
@@ -90,6 +92,8 @@ Shader "ABR/Ribbon"
                 float4 color       : TEXCOORD1;
                 float3 positionWS  : TEXCOORD2;
                 float3 normalWS    : TEXCOORD3;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+                UNITY_VERTEX_OUTPUT_STEREO
             };
 
             // -------------------------------------------------------
@@ -98,6 +102,9 @@ Shader "ABR/Ribbon"
             Varyings vert(Attributes IN)
             {
                 Varyings OUT = (Varyings)0;
+                UNITY_SETUP_INSTANCE_ID(IN);
+                UNITY_TRANSFER_INSTANCE_ID(IN, OUT);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
 
                 VertexPositionInputs posInputs    = GetVertexPositionInputs(IN.positionOS.xyz);
                 VertexNormalInputs   normalInputs = GetVertexNormalInputs(IN.normalOS, IN.tangentOS);
@@ -116,6 +123,9 @@ Shader "ABR/Ribbon"
             // -------------------------------------------------------
             half4 frag(Varyings IN) : SV_Target
             {
+                UNITY_SETUP_INSTANCE_ID(IN);
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(IN);
+
                 uint SupportedChannels = 4u;
 
                 // Variables packed into vertex color: r=color scalar, g=ribbon scalar

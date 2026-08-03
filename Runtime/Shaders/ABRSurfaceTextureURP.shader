@@ -55,6 +55,7 @@ Shader "ABR/SurfaceTexture"
             #pragma target 3.0
             #pragma vertex   vert
             #pragma fragment frag
+            #pragma multi_compile_instancing
 
             // URP lighting variants
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
@@ -215,6 +216,7 @@ Shader "ABR/SurfaceTexture"
                 float3 normalOS   : NORMAL;
                 float2 uv         : TEXCOORD0;
                 half4  color      : COLOR;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
@@ -227,11 +229,16 @@ Shader "ABR/SurfaceTexture"
                 half4  color        : COLOR;
                 float  fogFactor    : TEXCOORD4;
                 float4 shadowCoord  : TEXCOORD5;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+                UNITY_VERTEX_OUTPUT_STEREO
             };
 
             Varyings vert(Attributes v)
             {
-                Varyings o;
+                Varyings o = (Varyings)0;
+                UNITY_SETUP_INSTANCE_ID(v);
+                UNITY_TRANSFER_INSTANCE_ID(v, o);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
                 VertexPositionInputs pos = GetVertexPositionInputs(v.positionOS.xyz);
                 VertexNormalInputs   nrm = GetVertexNormalInputs(v.normalOS);
@@ -482,6 +489,9 @@ float3 ApplyMainAndAdditionalLights(float3 albedo, float3 positionWS, float3 nor
 #if 1 == 1
 half4 frag(Varyings i) : SV_Target
 {
+    UNITY_SETUP_INSTANCE_ID(i);
+    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
+
     float4 baseColor = CalculateABRTexturedSurfaceColor(i.positionOS, i.absNormalOS, i.color);
 
     float3 N = normalize(i.normalWS);

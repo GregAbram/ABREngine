@@ -577,13 +577,11 @@ namespace IVLab.ABREngine
 
             // This GameObject is expected to be a box/cube that the scene
             // author uses to visually place and size the data container in
-            // the Editor. Hide (but don't remove) its visual presence at
-            // runtime so it doesn't show up as a big cube during Play. Any
-            // Collider is left enabled/untouched, since scene authors may
-            // attach one deliberately (e.g. an XR Grab Interactable) to let
-            // users manipulate the data container at runtime.
-            MeshRenderer boxRenderer = GetComponent<MeshRenderer>();
-            if (boxRenderer != null) boxRenderer.enabled = false;
+            // the Editor. Its MeshRenderer and Collider are left
+            // enabled/untouched at runtime, since scene authors may want the
+            // box visible (e.g. as a reference for where its Collider is) or
+            // may attach interaction components (e.g. an XR Grab
+            // Interactable) to let users manipulate the data container.
 
             UnityThreadScheduler.GetInstance();
             persistentDataPath = Application.persistentDataPath;
